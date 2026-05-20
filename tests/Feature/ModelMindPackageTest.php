@@ -39,6 +39,14 @@ class ModelMindPackageTest extends TestCase
                 'columns' => 'auto',
                 'limit' => 10,
                 'order_by' => ['id' => 'asc'],
+                'route_actions' => [
+                    'knowledge.view' => [
+                        'label' => 'Open knowledge',
+                        'description' => 'Open the knowledge record.',
+                        'route' => 'knowledge.show',
+                        'parameters' => ['entry' => 'id'],
+                    ],
+                ],
             ],
         ]);
 
@@ -162,6 +170,10 @@ class ModelMindPackageTest extends TestCase
         $this->assertStringContainsString('Knowledge entries', $context);
         $this->assertStringContainsString('Public onboarding', $context);
         $this->assertStringContainsString('Use the public setup checklist.', $context);
+        $this->assertStringContainsString('knowledge.view', $context);
+        $this->assertStringContainsString('Open knowledge', $context);
+        $this->assertStringContainsString('[[model_mind_route key=\"knowledge.view\" entry=\"1\"]]', $context);
+        $this->assertStringContainsString('[[model_mind_route key=\"knowledge.trait-view\" entry=\"1\"]]', $context);
         $this->assertStringNotContainsString('super-secret', $context);
         $this->assertStringNotContainsString('token-secret', $context);
         $this->assertStringNotContainsString('hidden detail', $context);
@@ -218,6 +230,47 @@ class ModelMindPackageTest extends TestCase
             'source' => 'assistant_answer',
             'title' => 'Assistant answer',
             'content' => 'Support replies happen within one business day. Read more.',
+        ]);
+    }
+
+    public function test_chat_endpoint_resolves_whitelisted_named_route_actions(): void
+    {
+        $entry = KnowledgeEntry::query()->create([
+            'title' => 'Product setup',
+            'body' => 'Use the product setup checklist.',
+            'is_public' => true,
+        ]);
+
+        Http::fake([
+            'api.openai.com/v1/responses' => function (Request $request) use ($entry) {
+                $instructions = (string) $request['instructions'];
+
+                $this->assertStringContainsString('Route actions:', $instructions);
+                $this->assertStringContainsString('knowledge.view', $instructions);
+                $this->assertStringContainsString('route action token', $instructions);
+                $this->assertStringContainsString("[[model_mind_route key=\\\"knowledge.view\\\" entry=\\\"{$entry->id}\\\"]]", $instructions);
+
+                return Http::response([
+                    'output_text' => "Open the public product setup record.\n[[model_mind_route key=\"knowledge.view\" entry=\"{$entry->id}\"]]\n[[model_mind_route key=\"knowledge.delete\" entry=\"{$entry->id}\"]]",
+                ]);
+            },
+        ]);
+
+        $response = $this->postJson(route('model-mind.chat'), [
+            'question' => 'Open product setup',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('answer', 'Open the public product setup record.')
+            ->assertJsonCount(1, 'actions')
+            ->assertJsonPath('actions.0.label', 'Open knowledge')
+            ->assertJsonPath('actions.0.kind', 'route')
+            ->assertJsonPath('actions.0.url', url('/knowledge/'.$entry->id));
+
+        $this->assertDatabaseHas('model_mind_messages', [
+            'role' => ModelMindMessage::ROLE_ASSISTANT,
+            'content' => 'Open the public product setup record.',
         ]);
     }
 

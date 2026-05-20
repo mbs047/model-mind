@@ -38,6 +38,17 @@ class KnowledgeEntry extends Model
         ];
     }
 
+    public function modelMindRouteActions(): array
+    {
+        return [
+            'knowledge.trait-view' => [
+                'label' => 'Open from trait',
+                'route' => 'knowledge.show',
+                'parameters' => ['entry' => 'id'],
+            ],
+        ];
+    }
+
     /**
      * @param  Builder<static>  $query
      * @return Builder<static>

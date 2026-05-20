@@ -4,11 +4,15 @@ namespace Mbs\ModelMind\Support;
 
 use Mbs\ModelMind\Models\ModelMindMessage;
 use Mbs\ModelMind\Models\ModelMindSession;
+use Mbs\ModelMind\Support\Actions\RouteActionRegistry;
 use Mbs\ModelMind\Support\Context\ContextRegistry;
 
 class PromptBuilder
 {
-    public function __construct(private readonly ContextRegistry $contextRegistry) {}
+    public function __construct(
+        private readonly ContextRegistry $contextRegistry,
+        private readonly RouteActionRegistry $routeActions,
+    ) {}
 
     public function instructions(): string
     {
@@ -17,6 +21,7 @@ class PromptBuilder
         $toneInstructions = $this->stringConfig('model-mind.assistant.tone_instructions', 'Use a clear, concise, helpful professional tone.');
         $languageInstructions = $this->stringConfig('model-mind.assistant.language_instructions', 'Answer in the same language as the visitor.');
         $extraInstructions = $this->stringConfig('model-mind.prompt.extra_instructions', '');
+        $routeInstructions = $this->routeActions->promptInstructions();
 
         return sprintf(<<<'PROMPT'
 You are %s, the ModelMind assistant installed in this Laravel application.
@@ -32,10 +37,11 @@ Rules:
 - Tone: %s
 - Language: %s
 %s
+%s
 
 ENABLED APPLICATION CONTEXT:
 %s
-PROMPT, $assistantName, $fallbackAnswer, $toneInstructions, $languageInstructions, $extraInstructions, $this->contextRegistry->toPrompt());
+PROMPT, $assistantName, $fallbackAnswer, $toneInstructions, $languageInstructions, $extraInstructions, $routeInstructions, $this->contextRegistry->toPrompt());
     }
 
     public function input(string $question, ModelMindSession $session): string

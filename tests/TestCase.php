@@ -3,6 +3,7 @@
 namespace Mbs\ModelMind\Tests;
 
 use Illuminate\Foundation\Application;
+use Illuminate\Routing\Router;
 use Mbs\ModelMind\ModelMindServiceProvider;
 use Orchestra\Testbench\TestCase as Orchestra;
 
@@ -39,5 +40,13 @@ abstract class TestCase extends Orchestra
             'prefix' => '',
             'foreign_key_constraints' => true,
         ]);
+    }
+
+    /**
+     * @param  Router  $router
+     */
+    protected function defineRoutes($router): void
+    {
+        $router->get('/knowledge/{entry}', fn (string $entry): string => $entry)->name('knowledge.show');
     }
 }

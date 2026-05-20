@@ -6,10 +6,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Mbs\ModelMind\Concerns\HasModelMindContext;
+use Mbs\ModelMind\Support\Actions\RouteActionRegistry;
 
 class ModelContextBuilder
 {
-    public function __construct(private readonly ModelContextDiscoverer $discoverer) {}
+    public function __construct(
+        private readonly ModelContextDiscoverer $discoverer,
+        private readonly RouteActionRegistry $routeActions,
+    ) {}
 
     /**
      * @param  class-string<Model>  $modelClass
@@ -56,7 +60,7 @@ class ModelContextBuilder
                     (int) config('model-mind.security.max_rows_per_model', 50),
                 ))
                 ->get()
-                ->map(fn (Model $record): array => $this->recordContext($record, $columns))
+                ->map(fn (Model $record): array => $this->recordContext($record, $columns, $settings))
                 ->filter()
                 ->values()
                 ->all();
@@ -69,28 +73,32 @@ class ModelContextBuilder
             'description' => $settings['description'] ?? $this->traitDescription($model),
             'model' => $modelClass,
             'columns' => $columns,
+            'route_actions' => $this->routeActionSummaries($model, $settings),
             'rows' => $rows,
         ];
     }
 
     /**
      * @param  array<int, string>  $columns
+     * @param  array<string, mixed>  $settings
      * @return array<string, mixed>
      */
-    private function recordContext(Model $record, array $columns): array
+    private function recordContext(Model $record, array $columns, array $settings): array
     {
         if (in_array(HasModelMindContext::class, class_uses_recursive($record), true)) {
             $custom = $record->toModelMindContext();
 
             if ($custom !== []) {
-                return $this->cleanArray($custom);
+                return $this->withRouteActions($record, $settings, $this->cleanArray($custom));
             }
         }
 
-        return collect($columns)
+        $context = collect($columns)
             ->mapWithKeys(fn (string $column): array => [$column => $this->cleanValue($record->getAttribute($column))])
             ->reject(fn (mixed $value): bool => $value === null || $value === '' || $value === [])
             ->all();
+
+        return $this->withRouteActions($record, $settings, $context);
     }
 
     /**
@@ -151,5 +159,39 @@ class ModelContextBuilder
             ->map(fn (mixed $value): mixed => $this->cleanValue($value))
             ->reject(fn (mixed $value): bool => $value === null || $value === '' || $value === [])
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     * @return array<int, array{key: string, label: string}>
+     */
+    private function routeActionSummaries(Model $model, array $settings): array
+    {
+        return collect($this->routeActions->actionsForModel($model::class, $settings))
+            ->map(fn (array $action): array => [
+                'key' => $action['key'],
+                'label' => $action['label'],
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     * @param  array<string, mixed>  $settings
+     * @return array<string, mixed>
+     */
+    private function withRouteActions(Model $record, array $settings, array $context): array
+    {
+        $actions = $this->routeActions->actionsForRecord($record, $settings);
+
+        if ($actions === []) {
+            return $context;
+        }
+
+        return [
+            ...$context,
+            'model_mind_route_actions' => $actions,
+        ];
     }
 }

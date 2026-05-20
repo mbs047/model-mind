@@ -4,6 +4,8 @@ namespace Mbs\ModelMind\Support\Actions;
 
 class ActionExtractor
 {
+    public function __construct(private readonly RouteActionRegistry $routeActions) {}
+
     /**
      * @return array{answer: string, actions: array<int, array{label: string, url: string, kind: string}>}
      */
@@ -11,6 +13,11 @@ class ActionExtractor
     {
         $actions = [];
         $cleanAnswer = $answer;
+
+        foreach ($this->extractRouteActions($answer) as $routeAction) {
+            $this->pushAction($actions, $routeAction['action']);
+            $cleanAnswer = $this->removeNeedle($cleanAnswer, $routeAction['token']);
+        }
 
         foreach ($this->extractUrls($answer) as $url) {
             $this->pushAction($actions, $this->actionForUrl($url));
@@ -28,8 +35,61 @@ class ActionExtractor
 
         return [
             'answer' => $this->cleanAnswer($cleanAnswer),
-            'actions' => array_slice(array_values($actions), 0, 5),
+            'actions' => array_slice(array_values($actions), 0, max(0, (int) config('model-mind.actions.max_actions', 5))),
         ];
+    }
+
+    /**
+     * @return array<int, array{token: string, action: array{label: string, url: string, kind: string}|null}>
+     */
+    private function extractRouteActions(string $answer): array
+    {
+        $token = preg_quote($this->routeActions->token(), '~');
+        preg_match_all("~\\[\\[{$token}\\s+([^\\]]+)\\]\\]~iu", $answer, $matches, PREG_SET_ORDER);
+
+        return collect($matches)
+            ->map(function (array $match): ?array {
+                $attributes = $this->parseAttributes((string) ($match[1] ?? ''));
+                $key = $attributes['key'] ?? null;
+
+                if (! is_string($key) || blank($key)) {
+                    return [
+                        'token' => (string) ($match[0] ?? ''),
+                        'action' => null,
+                    ];
+                }
+
+                unset($attributes['key']);
+                $label = is_string($attributes['label'] ?? null) ? $attributes['label'] : null;
+                unset($attributes['label']);
+
+                return [
+                    'token' => (string) ($match[0] ?? ''),
+                    'action' => $this->routeActions->resolve($key, $attributes, $label),
+                ];
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function parseAttributes(string $source): array
+    {
+        preg_match_all('/([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(?:"([^"]*)"|\'([^\']*)\'|([^\s\]]+))/u', $source, $matches, PREG_SET_ORDER);
+
+        return collect($matches)
+            ->mapWithKeys(function (array $match): array {
+                $name = (string) ($match[1] ?? '');
+                $value = (string) (($match[2] ?? '') !== ''
+                    ? $match[2]
+                    : (($match[3] ?? '') !== '' ? $match[3] : ($match[4] ?? '')));
+
+                return [$name => str($value)->squish()->limit(200, '')->toString()];
+            })
+            ->all();
     }
 
     /**

@@ -206,6 +206,94 @@ Model options:
 - `relations`: Eloquent relations to eager load with selected columns.
 - `limit`: max records for this model before global security limits are applied.
 - `order_by`: column and direction pairs used to sort records.
+- `route_actions`: safe Laravel named-route actions that can become chat buttons.
+
+## Named Route Actions
+
+ModelMind can turn approved Laravel named routes into clickable chat buttons. This is safer than asking the AI to invent URLs because the package only resolves routes that you explicitly configure.
+
+Per-model route action:
+
+```php
+'models' => [
+    App\Models\Product::class => [
+        'enabled' => true,
+        'columns' => 'auto',
+        'route_actions' => [
+            'products.view' => [
+                'label' => 'View product',
+                'description' => 'Open the product detail page.',
+                'route' => 'products.show',
+                'parameters' => ['product' => 'id'],
+                'kind' => 'route',
+            ],
+        ],
+    ],
+],
+```
+
+Global route action:
+
+```php
+'actions' => [
+    'routes' => [
+        'orders.view' => [
+            'label' => 'View order',
+            'route' => 'orders.show',
+            'parameters' => ['order' => 'id'],
+        ],
+    ],
+],
+```
+
+The `parameters` array maps Laravel route parameter names to model context fields:
+
+```php
+'parameters' => [
+    'product' => 'id',
+    'tenant' => 'tenant_id',
+],
+```
+
+For a route like this:
+
+```php
+Route::get('/products/{product}', ProductShowController::class)->name('products.show');
+```
+
+Use:
+
+```php
+'route' => 'products.show',
+'parameters' => ['product' => 'id'],
+```
+
+When a row has enough data to build a route action, ModelMind adds a route token to the enabled context:
+
+```text
+[[model_mind_route key="products.view" product="123"]]
+```
+
+The AI is instructed to copy only approved route tokens. The server then validates the key and parameter names, generates the URL with Laravel's `route()` helper, removes the token from the visible answer, and returns a button action.
+
+Settings:
+
+```env
+MODEL_MIND_MAX_ACTIONS=5
+MODEL_MIND_ROUTE_TOKEN=model_mind_route
+```
+
+Optional config:
+
+```php
+'actions' => [
+    'max_actions' => 5,
+    'route_token' => 'model_mind_route',
+    'allow_label_override' => false,
+],
+```
+
+Keep `allow_label_override` disabled unless you trust the model to choose button labels. With the default setting, labels always come from your config or model trait.
 
 ## Per-Model Overrides
 
@@ -235,6 +323,17 @@ class Product extends Model
         return ['cost', 'supplier_private_notes'];
     }
 
+    public function modelMindRouteActions(): array
+    {
+        return [
+            'products.view' => [
+                'label' => 'View product',
+                'route' => 'products.show',
+                'parameters' => ['product' => 'id'],
+            ],
+        ];
+    }
+
     public function modelMindContextQuery(Builder $query): Builder
     {
         return $query->where('is_public', true);
@@ -249,6 +348,7 @@ Trait methods:
 - `modelMindContextColumns()`: return `auto` or an explicit column array.
 - `modelMindHiddenColumns()`: add package-specific hidden columns.
 - `modelMindContextRelations()`: return relations to include.
+- `modelMindRouteActions()`: define safe named-route actions for records of this model.
 - `modelMindContextQuery()`: scope records before they enter context.
 
 ## Inspecting Context

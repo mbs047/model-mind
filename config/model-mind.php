@@ -61,6 +61,13 @@ return [
             'relations' => [],
             'limit' => 50,
             'order_by' => ['updated_at' => 'desc'],
+            'route_actions' => [
+                'products.view' => [
+                    'label' => 'View product',
+                    'route' => 'products.show',
+                    'parameters' => ['product' => 'id'],
+                ],
+            ],
         ],
         */
     ],
@@ -136,6 +143,23 @@ return [
         'voice' => false,
         'streaming' => false,
         'realtime' => false,
+    ],
+
+    'actions' => [
+        'max_actions' => (int) env('MODEL_MIND_MAX_ACTIONS', 5),
+        'route_token' => env('MODEL_MIND_ROUTE_TOKEN', 'model_mind_route'),
+        'allow_label_override' => false,
+        'routes' => [
+            /*
+            'products.view' => [
+                'label' => 'View product',
+                'description' => 'Open the product detail page.',
+                'route' => 'products.show',
+                'parameters' => ['product' => 'id'],
+                'kind' => 'route',
+            ],
+            */
+        ],
     ],
 
     'learning' => [

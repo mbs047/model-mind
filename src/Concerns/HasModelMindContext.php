@@ -41,6 +41,14 @@ trait HasModelMindContext
     }
 
     /**
+     * @return array<string, array<string, mixed>>
+     */
+    public function modelMindRouteActions(): array
+    {
+        return [];
+    }
+
+    /**
      * @param  Builder<static>  $query
      * @return Builder<static>
      */

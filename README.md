@@ -22,6 +22,7 @@ It gives any Laravel app a reusable Blade/Tailwind chat modal, persisted convers
 - Per-model control through the `HasModelMindContext` trait.
 - Persisted chat sessions, message history, user feedback, and learned knowledge.
 - Configurable table prefix for clean package ownership.
+- Safe named-route action buttons from configured Laravel routes.
 - OpenAI Responses API support with package-specific API key and organization options.
 
 ## Quick Start
@@ -108,6 +109,8 @@ Supported widget positions are `bottom-right`, `bottom-left`, `bottom-center`, `
 Read the complete usage guide in [docs/USAGE.md](docs/USAGE.md). It covers installation, Blade directives, model configuration, security rules, learning memory, feedback, table prefixes, positions, OpenAI settings, custom providers, custom context providers, actions, testing, and release practices.
 
 For custom UI work, read [docs/CUSTOMIZING-THE-MODAL.md](docs/CUSTOMIZING-THE-MODAL.md). You can publish the default Blade views, or point ModelMind to a completely new modal, styles, and script from config.
+
+For application links, configure named route actions in `config/model-mind.php`; ModelMind will only turn approved route tokens into buttons.
 
 ## Security
 

@@ -239,6 +239,18 @@ Your script should still post to the configured endpoints:
 - `GET` to `sessionEndpoint` for history restore.
 - `POST` to `${feedbackEndpoint}/${messageId}/feedback` for feedback.
 
+Assistant responses can include actions returned by the server. For named-route actions, the server resolves the configured Laravel route and returns the final URL in the same `actions` payload as normal links:
+
+```json
+{
+    "label": "View product",
+    "url": "https://example.test/products/123",
+    "kind": "route"
+}
+```
+
+Custom scripts should render all action kinds safely and should not execute raw action content as HTML.
+
 ## Design Checklist
 
 - Keep the launcher visible and reachable on mobile.
