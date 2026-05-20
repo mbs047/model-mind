@@ -6,6 +6,8 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+## v1.0.4 - 2026-05-20
+
 ### Added
 
 - GitHub issue templates, pull request template, CI workflow, Dependabot configuration, and community documentation.
