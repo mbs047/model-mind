@@ -1,8 +1,4 @@
 <style>
-    [x-cloak] {
-        display: none !important;
-    }
-
     .model-mind-thinking-dot {
         animation: model-mind-bounce 1s infinite;
     }

@@ -8,6 +8,7 @@ ModelMind adds a reusable Blade/Tailwind chat modal, persisted conversation memo
 
 - Branded `ModelMind` chat modal for Laravel Blade apps.
 - Blade directives: `@modelMind`, `@modelMindModal`, `@modelMindScripts`, `@modelMindStyles`.
+- Self-contained browser script. Alpine is not required.
 - Anonymous Blade components such as `<x-model-mind::modal />`.
 - Persisted chat sessions, messages, server history restore, and feedback.
 - Config-driven Eloquent model context.
