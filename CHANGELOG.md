@@ -6,6 +6,8 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+## v1.0.9 - 2026-05-20
+
 ### Added
 
 - Documentation for multilingual answers from a single-language application database.
