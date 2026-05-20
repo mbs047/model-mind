@@ -12,6 +12,10 @@ ModelMind is a secure, configurable, model-aware AI chat assistant for Laravel a
 
 It gives any Laravel app a reusable Blade/Tailwind chat modal, persisted conversation history, configurable Eloquent model context, safe column auto-discovery, learning memory, feedback, and an OpenAI provider behind a clean package interface.
 
+## Demo Store
+
+Try ModelMind in the [MBS sample store](https://mbs-sample.on-forge.com/), a showcase application for MBS packages with ModelMind installed for testing.
+
 ## Features
 
 - Drop-in Blade chat modal with Tailwind-friendly styles.
