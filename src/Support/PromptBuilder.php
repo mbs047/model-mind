@@ -6,12 +6,14 @@ use Mbs\ModelMind\Models\ModelMindMessage;
 use Mbs\ModelMind\Models\ModelMindSession;
 use Mbs\ModelMind\Support\Actions\RouteActionRegistry;
 use Mbs\ModelMind\Support\Context\ContextRegistry;
+use Mbs\ModelMind\Support\PageContext\PageContextPromptFormatter;
 
 class PromptBuilder
 {
     public function __construct(
         private readonly ContextRegistry $contextRegistry,
         private readonly RouteActionRegistry $routeActions,
+        private readonly PageContextPromptFormatter $pageContext,
     ) {}
 
     public function instructions(?string $question = null): string
@@ -81,7 +83,7 @@ PROMPT, $assistantName, $fallbackAnswer, $toneInstructions, $languageInstruction
 
         $prompt = "Current visitor question:\n".str($question)->squish()->limit(2000, '')->toString();
 
-        $pagePrompt = $this->pageContextPrompt($pageContext);
+        $pagePrompt = $this->pageContext->format($pageContext);
 
         if (filled($pagePrompt)) {
             $prompt = "{$pagePrompt}\n\n{$prompt}";
@@ -96,55 +98,6 @@ PROMPT, $assistantName, $fallbackAnswer, $toneInstructions, $languageInstruction
         }
 
         return $prompt;
-    }
-
-    /**
-     * @param  array<string, mixed>  $pageContext
-     */
-    private function pageContextPrompt(array $pageContext): string
-    {
-        if ($pageContext === []) {
-            return '';
-        }
-
-        $lines = ['CURRENT PAGE CONTEXT (untrusted browser-visible page snapshot):'];
-
-        foreach ([
-            'url' => 'URL',
-            'title' => 'Title',
-            'description' => 'Description',
-            'locale' => 'Locale',
-        ] as $key => $label) {
-            if (is_scalar($pageContext[$key] ?? null) && filled((string) $pageContext[$key])) {
-                $lines[] = "{$label}: ".str((string) $pageContext[$key])->squish()->limit(2048, '')->toString();
-            }
-        }
-
-        $headings = collect((array) ($pageContext['headings'] ?? []))
-            ->filter(fn (mixed $heading): bool => is_scalar($heading) && filled((string) $heading))
-            ->map(fn (mixed $heading): string => str((string) $heading)->squish()->limit(180, '')->toString())
-            ->values()
-            ->all();
-
-        if ($headings !== []) {
-            $lines[] = 'Headings: '.implode(' | ', $headings);
-        }
-
-        if (is_scalar($pageContext['selection'] ?? null) && filled((string) $pageContext['selection'])) {
-            $lines[] = "Selected text:\n".str((string) $pageContext['selection'])->squish()->limit(
-                (int) config('model-mind.page_context.max_selection_characters', 2000),
-                '',
-            )->toString();
-        }
-
-        if (is_scalar($pageContext['content'] ?? null) && filled((string) $pageContext['content'])) {
-            $lines[] = "Visible page text:\n".str((string) $pageContext['content'])->squish()->limit(
-                (int) config('model-mind.page_context.max_content_characters', 6000),
-                '',
-            )->toString();
-        }
-
-        return implode("\n", $lines);
     }
 
     private function stringConfig(string $key, string $fallback): string

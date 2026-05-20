@@ -2,12 +2,12 @@
 
 ModelMind gives you two customization paths:
 
-- Publish and edit the default package views.
-- Create a completely new Blade design and point the package to it.
+- Publish and edit the default modal view.
+- Create a completely new Blade modal and point the package to it.
 
 Use the first path for small visual changes. Use the second path when the assistant should match a product design system exactly.
 
-## Publish the Default Views
+## Publish the Default Modal View
 
 ```bash
 php artisan model-mind:install --views
@@ -17,11 +17,9 @@ This publishes:
 
 ```text
 resources/views/vendor/model-mind/components/modal.blade.php
-resources/views/vendor/model-mind/components/styles.blade.php
-resources/views/vendor/model-mind/components/scripts.blade.php
 ```
 
-Laravel automatically prefers published package views over vendor package views, so the standard directives continue to work:
+Laravel automatically prefers published package views over vendor package views. Styles and scripts still load from public `.css` and `.js` assets, so the standard directives continue to work:
 
 ```blade
 @modelMindStyles
@@ -58,12 +56,9 @@ Then update `config/model-mind.php` so only the modal markup is a custom Blade v
 ```php
 'views' => [
     'modal' => env('MODEL_MIND_MODAL_VIEW', 'components.ai.model-mind-modal'),
-    'styles' => env('MODEL_MIND_STYLES_VIEW', 'model-mind::components.styles'),
-    'scripts' => env('MODEL_MIND_SCRIPTS_VIEW', 'model-mind::components.scripts'),
 ],
 
 'assets' => [
-    'use_public' => true,
     'styles_path' => 'vendor/model-mind/model-mind.css',
     'scripts_path' => 'vendor/model-mind/model-mind.js',
 ],
@@ -73,7 +68,6 @@ Or use environment variables:
 
 ```env
 MODEL_MIND_MODAL_VIEW=components.ai.model-mind-modal
-MODEL_MIND_USE_PUBLIC_ASSETS=true
 MODEL_MIND_STYLES_ASSET=vendor/model-mind/model-mind.css
 MODEL_MIND_SCRIPTS_ASSET=vendor/model-mind/model-mind.js
 ```
@@ -240,14 +234,12 @@ If Tailwind does not generate package classes, include the package or custom vie
 Keep the package modal, but use your own CSS file:
 
 ```env
-MODEL_MIND_USE_PUBLIC_ASSETS=true
 MODEL_MIND_STYLES_ASSET=vendor/model-mind/custom.css
 ```
 
 Keep the package modal, but use your own JavaScript file:
 
 ```env
-MODEL_MIND_USE_PUBLIC_ASSETS=true
 MODEL_MIND_SCRIPTS_ASSET=vendor/model-mind/custom.js
 ```
 

@@ -4,21 +4,23 @@ namespace Mbs\ModelMind\Support\PageContext;
 
 class PageContextSanitizer
 {
+    public function __construct(private readonly PageContextConfig $config) {}
+
     /**
      * @param  array<string, mixed>|null  $context
      * @return array{url?: string, title?: string, description?: string, selection?: string, headings?: array<int, string>, content?: string, locale?: string}
      */
     public function sanitize(?array $context): array
     {
-        if (! $this->enabled() || ! is_array($context)) {
+        if (! $this->config->enabled() || ! is_array($context)) {
             return [];
         }
 
         $sanitized = array_filter([
             'url' => $this->url($context['url'] ?? null),
-            'title' => $this->cleanText($context['title'] ?? null, (int) config('model-mind.page_context.max_title_characters', 180)),
-            'description' => $this->cleanText($context['description'] ?? null, (int) config('model-mind.page_context.max_description_characters', 500)),
-            'selection' => $this->cleanText($context['selection'] ?? null, (int) config('model-mind.page_context.max_selection_characters', 2000)),
+            'title' => $this->cleanText($context['title'] ?? null, $this->config->maxTitleCharacters()),
+            'description' => $this->cleanText($context['description'] ?? null, $this->config->maxDescriptionCharacters()),
+            'selection' => $this->cleanText($context['selection'] ?? null, $this->config->maxSelectionCharacters()),
             'locale' => $this->cleanText($context['locale'] ?? null, 30),
         ], fn (?string $value): bool => filled($value));
 
@@ -28,19 +30,13 @@ class PageContextSanitizer
             $sanitized['headings'] = $headings;
         }
 
-        $content = $this->cleanText($context['content'] ?? null, (int) config('model-mind.page_context.max_content_characters', 6000));
+        $content = $this->cleanText($context['content'] ?? null, $this->config->maxContentCharacters());
 
         if (filled($content)) {
             $sanitized['content'] = $content;
         }
 
         return $sanitized;
-    }
-
-    private function enabled(): bool
-    {
-        return (bool) config('model-mind.features.page_context', true)
-            && (bool) config('model-mind.page_context.enabled', true);
     }
 
     private function url(mixed $value): ?string
@@ -81,10 +77,10 @@ class PageContextSanitizer
     private function headings(mixed $headings): array
     {
         return collect((array) $headings)
-            ->map(fn (mixed $heading): ?string => $this->cleanText($heading, (int) config('model-mind.page_context.max_heading_characters', 160)))
+            ->map(fn (mixed $heading): ?string => $this->cleanText($heading, $this->config->maxHeadingCharacters()))
             ->filter()
             ->unique()
-            ->take(max(0, (int) config('model-mind.page_context.max_headings', 12)))
+            ->take($this->config->maxHeadings())
             ->values()
             ->all();
     }

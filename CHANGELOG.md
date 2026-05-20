@@ -13,6 +13,15 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - Current page context support so users can ask about the product, record, text selection, or content visible on the page.
 - Friendly comments across the published config file explaining each major configurable block and expected values.
 
+### Changed
+
+- The widget now always loads browser CSS and JavaScript from public `.css` and `.js` assets.
+- `model-mind:install` publishes public assets by default.
+
+### Removed
+
+- Removed the package Blade views for inline styles and scripts.
+
 ## v1.0.14 - 2026-05-21
 
 ### Added

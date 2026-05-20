@@ -8,10 +8,10 @@ ModelMind can publish its default CSS and JavaScript into `public/vendor/model-m
 php artisan model-mind:publish-assets
 ```
 
-Or include assets during package install:
+Assets are included during package install:
 
 ```bash
-php artisan model-mind:install --assets
+php artisan model-mind:install
 ```
 
 You can also use Laravel's publish command directly:
@@ -30,12 +30,11 @@ public/vendor/model-mind/model-mind.js
 ## Use Published Assets
 
 ```env
-MODEL_MIND_USE_PUBLIC_ASSETS=true
 MODEL_MIND_STYLES_ASSET=vendor/model-mind/model-mind.css
 MODEL_MIND_SCRIPTS_ASSET=vendor/model-mind/model-mind.js
 ```
 
-When `MODEL_MIND_USE_PUBLIC_ASSETS=true`, the standard directives render public asset tags:
+The standard directives always render public asset tags:
 
 ```blade
 @modelMindStyles
@@ -56,7 +55,6 @@ public/vendor/model-mind/custom.js
 Then point ModelMind to them:
 
 ```env
-MODEL_MIND_USE_PUBLIC_ASSETS=true
 MODEL_MIND_STYLES_ASSET=vendor/model-mind/custom.css
 MODEL_MIND_SCRIPTS_ASSET=vendor/model-mind/custom.js
 ```

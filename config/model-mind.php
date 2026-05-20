@@ -796,14 +796,12 @@ return [
     | Publishable Views
     |--------------------------------------------------------------------------
     |
-    | Swap these view names after publishing or creating a custom design. Keep
-    | the same data contract when replacing the modal, styles, or scripts.
+    | Swap the modal view after publishing or creating a custom design. CSS and
+    | JavaScript are intentionally public assets only, configured below.
     |
     */
     'views' => [
         'modal' => env('MODEL_MIND_MODAL_VIEW', 'model-mind::components.modal'),
-        'styles' => env('MODEL_MIND_STYLES_VIEW', 'model-mind::components.styles'),
-        'scripts' => env('MODEL_MIND_SCRIPTS_VIEW', 'model-mind::components.scripts'),
     ],
 
     /*
@@ -811,13 +809,12 @@ return [
     | Public Assets
     |--------------------------------------------------------------------------
     |
-    | By default styles and scripts render inline for easy installation. Set
-    | use_public to true after publishing assets if your CSP or build process
-    | prefers linked CSS and JS files.
+    | The widget always loads browser code from public .css and .js files. Run
+    | php artisan model-mind:publish-assets after install, then change these
+    | paths if you publish custom compiled assets for your own design.
     |
     */
     'assets' => [
-        'use_public' => filter_var(env('MODEL_MIND_USE_PUBLIC_ASSETS', false), FILTER_VALIDATE_BOOL),
         'styles_path' => env('MODEL_MIND_STYLES_ASSET', 'vendor/model-mind/model-mind.css'),
         'scripts_path' => env('MODEL_MIND_SCRIPTS_ASSET', 'vendor/model-mind/model-mind.js'),
     ],

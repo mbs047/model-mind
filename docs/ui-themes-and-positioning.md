@@ -14,7 +14,8 @@ MODEL_MIND_POSITION=bottom-right
 MODEL_MIND_WIDTH=25rem
 MODEL_MIND_OFFSET=1.25rem
 MODEL_MIND_Z_INDEX=9999
-MODEL_MIND_USE_PUBLIC_ASSETS=false
+MODEL_MIND_STYLES_ASSET=vendor/model-mind/model-mind.css
+MODEL_MIND_SCRIPTS_ASSET=vendor/model-mind/model-mind.js
 ```
 
 ## Themes

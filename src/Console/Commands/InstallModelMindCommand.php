@@ -7,8 +7,8 @@ use Illuminate\Console\Command;
 class InstallModelMindCommand extends Command
 {
     protected $signature = 'model-mind:install
-        {--views : Publish the customizable Blade views}
-        {--assets : Publish the public CSS and JavaScript assets}
+        {--views : Publish the customizable Blade modal view}
+        {--assets : Deprecated; assets are published by default}
         {--force : Overwrite previously published files}
         {--dry-run : Show the publish steps without writing files}';
 
@@ -21,14 +21,11 @@ class InstallModelMindCommand extends Command
         $tags = [
             'model-mind-config',
             'model-mind-migrations',
+            'model-mind-assets',
         ];
 
         if ($this->option('views')) {
             $tags[] = 'model-mind-views';
-        }
-
-        if ($this->option('assets')) {
-            $tags[] = 'model-mind-assets';
         }
 
         foreach ($tags as $tag) {

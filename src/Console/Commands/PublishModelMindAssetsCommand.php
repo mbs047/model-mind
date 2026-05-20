@@ -27,7 +27,7 @@ class PublishModelMindAssetsCommand extends Command
         ]);
 
         $this->info('Published [model-mind-assets].');
-        $this->line('Next: set MODEL_MIND_USE_PUBLIC_ASSETS=true if you want the package directives to render public asset tags.');
+        $this->line('Next: keep @modelMindStyles and @modelMindScripts in your layout so the published CSS and JS load.');
 
         return self::SUCCESS;
     }

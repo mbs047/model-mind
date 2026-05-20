@@ -92,7 +92,7 @@ class ModelMindPackageTest extends TestCase
         });
     }
 
-    public function test_blade_directives_render_a_self_contained_widget(): void
+    public function test_blade_directives_render_widget_markup_and_public_assets(): void
     {
         $html = Blade::render('@modelMindStyles @modelMindModal @modelMindScripts <x-model-mind::modal />');
 
@@ -100,7 +100,8 @@ class ModelMindPackageTest extends TestCase
         $this->assertStringContainsString('data-model-mind-position="bottom-right"', $html);
         $this->assertStringContainsString('data-model-mind-theme="auto"', $html);
         $this->assertStringContainsString('--model-mind-width: 25rem;', $html);
-        $this->assertStringContainsString('window.ModelMind', $html);
+        $this->assertStringContainsString('href="http://localhost/vendor/model-mind/model-mind.css"', $html);
+        $this->assertStringContainsString('src="http://localhost/vendor/model-mind/model-mind.js"', $html);
         $this->assertStringContainsString(route('model-mind.chat'), $html);
         $this->assertStringContainsString(route('model-mind.stream'), $html);
         $this->assertStringContainsString(route('model-mind.session'), $html);
@@ -108,12 +109,18 @@ class ModelMindPackageTest extends TestCase
         $this->assertStringContainsString('"streamingEnabled":false', $html);
         $this->assertStringContainsString('"pageContext":{"enabled":true', $html);
         $this->assertStringContainsString('Ask ModelMind', $html);
-        $this->assertStringContainsString('Helpful', $html);
-        $this->assertStringContainsString('Not helpful', $html);
-        $this->assertStringContainsString('aria-pressed', $html);
-        $this->assertStringContainsString('Sources', $html);
         $this->assertStringNotContainsString('x-cloak', $html);
         $this->assertStringNotContainsString('x-data', $html);
+        $this->assertStringNotContainsString('<style>', $html);
+        $this->assertStringNotContainsString('window.ModelMind', $html);
+
+        $browserScript = file_get_contents(__DIR__.'/../../resources/dist/model-mind.js');
+
+        $this->assertIsString($browserScript);
+        $this->assertStringContainsString('Helpful', $browserScript);
+        $this->assertStringContainsString('Not helpful', $browserScript);
+        $this->assertStringContainsString('aria-pressed', $browserScript);
+        $this->assertStringContainsString('Sources', $browserScript);
     }
 
     public function test_position_and_table_prefix_are_configurable(): void
@@ -161,7 +168,7 @@ class ModelMindPackageTest extends TestCase
         $this->assertStringNotContainsString('Legacy question', $html);
     }
 
-    public function test_theme_and_custom_views_are_configurable(): void
+    public function test_theme_modal_view_and_asset_paths_are_configurable(): void
     {
         config()->set('model-mind.ui.theme', 'dark');
 
@@ -172,24 +179,28 @@ class ModelMindPackageTest extends TestCase
         $this->assertStringContainsString('"theme":"dark"', $darkHtml);
 
         config()->set('model-mind.views.modal', 'model-mind-test::custom-modal');
-        config()->set('model-mind.views.styles', 'model-mind-test::custom-styles');
-        config()->set('model-mind.views.scripts', 'model-mind-test::custom-scripts');
+        config()->set('model-mind.assets.styles_path', 'vendor/model-mind/theme.css');
+        config()->set('model-mind.assets.scripts_path', 'vendor/model-mind/theme.js');
 
         $configuredHtml = Blade::render("@modelMind(['data' => ['label' => 'Configured design']])");
 
         $this->assertStringContainsString('data-custom-model-mind-modal', $configuredHtml);
         $this->assertStringContainsString('Configured design', $configuredHtml);
-        $this->assertStringContainsString('data-custom-model-mind-styles', $configuredHtml);
-        $this->assertStringContainsString('data-custom-model-mind-scripts', $configuredHtml);
+        $this->assertStringContainsString('href="http://localhost/vendor/model-mind/theme.css"', $configuredHtml);
+        $this->assertStringContainsString('src="http://localhost/vendor/model-mind/theme.js"', $configuredHtml);
 
         $inlineHtml = Blade::render("@modelMindModal(['view' => 'model-mind-test::custom-modal', 'data' => ['label' => 'Inline design']])");
 
         $this->assertStringContainsString('Inline design', $inlineHtml);
+
+        $assetOverrideHtml = Blade::render("@modelMind(['styles' => 'vendor/model-mind/alt.css', 'scripts' => ['path' => 'vendor/model-mind/alt.js']])");
+
+        $this->assertStringContainsString('href="http://localhost/vendor/model-mind/alt.css"', $assetOverrideHtml);
+        $this->assertStringContainsString('src="http://localhost/vendor/model-mind/alt.js"', $assetOverrideHtml);
     }
 
-    public function test_public_assets_can_be_rendered_and_published_separately(): void
+    public function test_public_assets_are_rendered_and_published_separately(): void
     {
-        config()->set('model-mind.assets.use_public', true);
         config()->set('model-mind.assets.styles_path', 'vendor/model-mind/custom.css');
         config()->set('model-mind.assets.scripts_path', 'vendor/model-mind/custom.js');
 
@@ -202,7 +213,6 @@ class ModelMindPackageTest extends TestCase
         $this->assertStringNotContainsString('window.ModelMind', $html);
 
         Artisan::call('model-mind:install', [
-            '--assets' => true,
             '--dry-run' => true,
         ]);
 

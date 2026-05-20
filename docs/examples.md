@@ -123,7 +123,6 @@ MODEL_MIND_WIDTH=28rem
 MODEL_MIND_OFFSET=1.5rem
 MODEL_MIND_Z_INDEX=9999
 
-MODEL_MIND_USE_PUBLIC_ASSETS=true
 MODEL_MIND_STYLES_ASSET=vendor/model-mind/model-mind.css
 MODEL_MIND_SCRIPTS_ASSET=vendor/model-mind/model-mind.js
 
@@ -331,12 +330,9 @@ MODEL_MIND_LEARNING_CONTEXT_LIMIT=12
 
 'views' => [
     'modal' => env('MODEL_MIND_MODAL_VIEW', 'components.ai.model-mind-modal'),
-    'styles' => env('MODEL_MIND_STYLES_VIEW', 'model-mind::components.styles'),
-    'scripts' => env('MODEL_MIND_SCRIPTS_VIEW', 'model-mind::components.scripts'),
 ],
 
 'assets' => [
-    'use_public' => filter_var(env('MODEL_MIND_USE_PUBLIC_ASSETS', true), FILTER_VALIDATE_BOOL),
     'styles_path' => env('MODEL_MIND_STYLES_ASSET', 'vendor/model-mind/model-mind.css'),
     'scripts_path' => env('MODEL_MIND_SCRIPTS_ASSET', 'vendor/model-mind/model-mind.js'),
 ],
@@ -542,8 +538,6 @@ Then customize these files:
 
 ```text
 resources/views/vendor/model-mind/components/modal.blade.php
-resources/views/vendor/model-mind/components/styles.blade.php
-resources/views/vendor/model-mind/components/scripts.blade.php
 public/vendor/model-mind/model-mind.css
 public/vendor/model-mind/model-mind.js
 ```
@@ -552,7 +546,6 @@ Or create a fresh modal and point config to it:
 
 ```env
 MODEL_MIND_MODAL_VIEW=components.ai.model-mind-modal
-MODEL_MIND_USE_PUBLIC_ASSETS=true
 MODEL_MIND_STYLES_ASSET=vendor/model-mind/model-mind.css
 MODEL_MIND_SCRIPTS_ASSET=vendor/model-mind/model-mind.js
 ```

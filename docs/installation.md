@@ -6,7 +6,7 @@ Install ModelMind with Composer:
 composer require mbs047/model-mind
 ```
 
-Publish the config and migration:
+Publish the config, migration, and public CSS/JavaScript assets:
 
 ```bash
 php artisan model-mind:install
@@ -18,22 +18,16 @@ Run the migration:
 php artisan migrate
 ```
 
-To also publish the Blade views for customization:
+To also publish the Blade modal view for customization:
 
 ```bash
 php artisan model-mind:install --views
 ```
 
-To publish the public CSS and JavaScript assets:
+To republish the public CSS and JavaScript assets later:
 
 ```bash
 php artisan model-mind:publish-assets
-```
-
-Or include them during install:
-
-```bash
-php artisan model-mind:install --assets
 ```
 
 You can publish individual groups manually:

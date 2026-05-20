@@ -22,6 +22,7 @@ use Mbs\ModelMind\Support\Actions\ActionExtractor;
 use Mbs\ModelMind\Support\Analytics\ModelMindAnalytics;
 use Mbs\ModelMind\Support\Citations\SourceCitationExtractor;
 use Mbs\ModelMind\Support\Learning\LearningRepository;
+use Mbs\ModelMind\Support\PageContext\PageContextConfig;
 use Mbs\ModelMind\Support\PageContext\PageContextSanitizer;
 use Mbs\ModelMind\Support\PromptBuilder;
 use RuntimeException;
@@ -29,7 +30,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ModelMindController extends Controller
 {
-    public function manifest(): JsonResponse
+    public function manifest(PageContextConfig $pageContext): JsonResponse
     {
         $assistant = config('model-mind.assistant', []);
         $assistant = is_array($assistant) ? $assistant : [];
@@ -49,8 +50,7 @@ class ModelMindController extends Controller
                 'citations' => (bool) config('model-mind.features.citations', true),
                 'streaming' => (bool) config('model-mind.features.streaming', false),
                 'analytics' => (bool) config('model-mind.analytics.enabled', true),
-                'page_context' => (bool) config('model-mind.features.page_context', true)
-                    && (bool) config('model-mind.page_context.enabled', true),
+                'page_context' => $pageContext->enabled(),
             ],
             'endpoints' => [
                 'chat' => route((string) config('model-mind.api.name', 'model-mind.api.').'chat'),
@@ -64,7 +64,7 @@ class ModelMindController extends Controller
                 'history_messages' => 20,
                 'history_message_characters' => 10000,
                 'feedback_note_characters' => 1000,
-                'page_context_characters' => (int) config('model-mind.page_context.max_content_characters', 6000),
+                'page_context_characters' => $pageContext->maxContentCharacters(),
             ],
             'session_lifetime_minutes' => max(0, (int) config('model-mind.memory.session_lifetime_minutes', 120)),
         ]);

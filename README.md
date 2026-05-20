@@ -129,7 +129,8 @@ MODEL_MIND_INFER_SOURCE_CITATIONS=true
 MODEL_MIND_PAGE_CONTEXT_ENABLED=true
 MODEL_MIND_ANALYTICS_ENABLED=true
 MODEL_MIND_MAX_OUTPUT_TOKENS=450
-MODEL_MIND_USE_PUBLIC_ASSETS=false
+MODEL_MIND_STYLES_ASSET=vendor/model-mind/model-mind.css
+MODEL_MIND_SCRIPTS_ASSET=vendor/model-mind/model-mind.js
 ```
 
 Supported widget positions are `bottom-right`, `bottom-left`, `bottom-center`, `top-right`, `top-left`, `top-center`, `center`, `center-left`, and `center-right`. Short aliases are accepted for `top`, `bottom`, `left`, and `right`.
@@ -145,7 +146,7 @@ php artisan model-mind:preset --list
 php artisan model-mind:preset store --json
 ```
 
-For custom UI work, read [docs/customizing-the-modal.md](docs/customizing-the-modal.md). You can publish the default Blade views, or point ModelMind to a completely new modal, styles, and script from config.
+For custom UI work, read [docs/customizing-the-modal.md](docs/customizing-the-modal.md). You can publish the default modal view, or point ModelMind to a new modal plus custom public CSS and JavaScript assets.
 
 For application links, configure named route actions in `config/model-mind.php`; ModelMind will only turn approved route tokens into buttons.
 
