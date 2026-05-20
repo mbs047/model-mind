@@ -22,6 +22,7 @@ Try ModelMind in [Market Lane Store](https://mbs-sample.on-forge.com/), a sample
 - `@modelMind`, `@modelMindModal`, `@modelMindStyles`, and `@modelMindScripts` directives.
 - Configurable widget position, width, offset, z-index, labels, prompt tone, and brand mark.
 - Model-aware answers from only the Eloquent models you explicitly enable.
+- User-aware context with guard, role, tenant, and Gate/policy scoping.
 - Auto-discovered columns with sensitive field filtering.
 - Per-model control through the `HasModelMindContext` trait.
 - Persisted chat sessions, message history, user feedback, and learned knowledge.
@@ -116,7 +117,7 @@ Supported widget positions are `bottom-right`, `bottom-left`, `bottom-center`, `
 
 ## Full Documentation
 
-Read the documentation index in [docs/README.md](docs/README.md). Start with [docs/examples.md](docs/examples.md) for simple and advanced copyable setups. Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, model configuration, multilingual answers, retrieval, route actions, security, learning memory, feedback, table prefixes, providers, routes, performance, and testing.
+Read the documentation index in [docs/README.md](docs/README.md). Start with [docs/examples.md](docs/examples.md) for simple and advanced copyable setups. Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, model configuration, multilingual answers, retrieval, route actions, authorization, security, learning memory, feedback, table prefixes, providers, routes, performance, and testing.
 
 For custom UI work, read [docs/customizing-the-modal.md](docs/customizing-the-modal.md). You can publish the default Blade views, or point ModelMind to a completely new modal, styles, and script from config.
 

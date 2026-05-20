@@ -24,6 +24,7 @@ This page is the compact starting point for ModelMind. Each major feature now ha
 - [Per-Model Overrides](per-model-overrides.md)
 - [Question-Aware Retrieval](retrieval.md)
 - [Named Route Actions](route-actions.md)
+- [Authorization and User-Aware Context](authorization.md)
 - [Security Controls](security.md)
 - [Learning Memory](learning-memory.md)
 - [Feedback](feedback.md)

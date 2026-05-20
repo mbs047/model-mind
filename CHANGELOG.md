@@ -6,6 +6,16 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+## v1.0.10 - 2026-05-20
+
+### Added
+
+- Authorization and user-aware context with current user, guard, role, permission, and tenant prompt context.
+- Per-model user and tenant query scoping plus Laravel Gate/policy checks before records enter AI context.
+- Authorization callbacks and `HasModelMindContext::modelMindAuthorization()` for model-owned access rules.
+- Route action authorization so tokens for records the current user cannot view are discarded.
+- Documentation for admin, SaaS, customer portal, tenant, Gate, and callback authorization setups.
+
 ## v1.0.9 - 2026-05-20
 
 ### Added

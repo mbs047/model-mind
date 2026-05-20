@@ -8,6 +8,7 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Mbs\ModelMind\Models\ModelMindMemory;
@@ -16,6 +17,7 @@ use Mbs\ModelMind\Models\ModelMindSession;
 use Mbs\ModelMind\Support\Context\ContextRegistry;
 use Mbs\ModelMind\Support\Database\TableNames;
 use Mbs\ModelMind\Tests\Fixtures\KnowledgeEntry;
+use Mbs\ModelMind\Tests\Fixtures\User;
 use Mbs\ModelMind\Tests\TestCase;
 
 class ModelMindPackageTest extends TestCase
@@ -51,9 +53,22 @@ class ModelMindPackageTest extends TestCase
             ],
         ]);
 
+        Schema::dropIfExists('model_mind_users');
+        Schema::create('model_mind_users', function (Blueprint $table): void {
+            $table->id();
+            $table->string('name');
+            $table->string('email');
+            $table->string('password')->nullable();
+            $table->string('role_names')->nullable();
+            $table->string('tenant_id')->nullable();
+            $table->timestamps();
+        });
+
         Schema::dropIfExists('model_mind_knowledge_entries');
         Schema::create('model_mind_knowledge_entries', function (Blueprint $table): void {
             $table->id();
+            $table->foreignId('user_id')->nullable();
+            $table->string('tenant_id')->nullable();
             $table->string('title');
             $table->text('body');
             $table->string('password')->nullable();
@@ -238,6 +253,135 @@ class ModelMindPackageTest extends TestCase
         $this->assertStringNotContainsString('internal detail', $context);
         $this->assertStringNotContainsString('Private onboarding', $context);
         $this->assertStringNotContainsString('<strong>', $context);
+    }
+
+    public function test_context_can_include_authenticated_user_guard_roles_and_tenant(): void
+    {
+        config()->set('model-mind.authorization.user_columns', [
+            'id',
+            'name',
+            'email',
+            'password',
+            'tenant_id',
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'MBS Admin',
+            'email' => 'admin@example.test',
+            'password' => 'should-not-be-shared',
+            'role_names' => 'owner, support',
+            'tenant_id' => 'tenant-alpha',
+        ]);
+
+        $this->actingAs($user);
+
+        $context = app(ContextRegistry::class)->toPrompt();
+
+        $this->assertStringContainsString('"authorization"', $context);
+        $this->assertStringContainsString('"guard": "web"', $context);
+        $this->assertStringContainsString('"authenticated": true', $context);
+        $this->assertStringContainsString('MBS Admin', $context);
+        $this->assertStringContainsString('admin@example.test', $context);
+        $this->assertStringContainsString('tenant-alpha', $context);
+        $this->assertStringContainsString('owner', $context);
+        $this->assertStringContainsString('support', $context);
+        $this->assertStringNotContainsString('should-not-be-shared', $context);
+    }
+
+    public function test_model_context_is_scoped_by_user_tenant_and_gate_checks(): void
+    {
+        config()->set('model-mind.models', [
+            KnowledgeEntry::class => [
+                'enabled' => true,
+                'columns' => 'auto',
+                'limit' => 10,
+                'order_by' => ['id' => 'asc'],
+                'authorization' => [
+                    'scope_to_user' => true,
+                    'user_column' => 'user_id',
+                    'scope_to_tenant' => true,
+                    'tenant_column' => 'tenant_id',
+                    'gate' => true,
+                    'ability' => 'view',
+                ],
+                'route_actions' => [
+                    'knowledge.view' => [
+                        'label' => 'Open knowledge',
+                        'route' => 'knowledge.show',
+                        'parameters' => ['entry' => 'id'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $user = User::query()->create([
+            'name' => 'Tenant Owner',
+            'email' => 'owner@example.test',
+            'role_names' => 'owner',
+            'tenant_id' => 'tenant-alpha',
+        ]);
+        $otherUser = User::query()->create([
+            'name' => 'Other User',
+            'email' => 'other@example.test',
+            'tenant_id' => 'tenant-alpha',
+        ]);
+
+        $allowed = KnowledgeEntry::query()->create([
+            'user_id' => $user->id,
+            'tenant_id' => 'tenant-alpha',
+            'title' => 'Allowed tenant launch plan',
+            'body' => 'Visible only to the owning tenant user.',
+            'is_public' => true,
+        ]);
+        $deniedByGate = KnowledgeEntry::query()->create([
+            'user_id' => $user->id,
+            'tenant_id' => 'tenant-alpha',
+            'title' => 'Denied by Gate',
+            'body' => 'This record fails the policy check.',
+            'is_public' => true,
+        ]);
+        KnowledgeEntry::query()->create([
+            'user_id' => $otherUser->id,
+            'tenant_id' => 'tenant-alpha',
+            'title' => 'Other user launch plan',
+            'body' => 'This belongs to another user.',
+            'is_public' => true,
+        ]);
+        KnowledgeEntry::query()->create([
+            'user_id' => $user->id,
+            'tenant_id' => 'tenant-beta',
+            'title' => 'Other tenant launch plan',
+            'body' => 'This belongs to another tenant.',
+            'is_public' => true,
+        ]);
+
+        Gate::define('view', fn (User $user, KnowledgeEntry $entry): bool => (int) $entry->user_id === (int) $user->id
+            && $entry->title !== 'Denied by Gate');
+
+        $this->actingAs($user);
+
+        $context = app(ContextRegistry::class)->toPrompt('launch plan');
+
+        $this->assertStringContainsString('Allowed tenant launch plan', $context);
+        $this->assertStringNotContainsString('Denied by Gate', $context);
+        $this->assertStringNotContainsString('Other user launch plan', $context);
+        $this->assertStringNotContainsString('Other tenant launch plan', $context);
+
+        Http::fake([
+            'api.openai.com/v1/responses' => fn () => Http::response([
+                'output_text' => "Open the allowed launch plan.\n[[model_mind_route key=\"knowledge.view\" entry=\"{$allowed->id}\"]]\n[[model_mind_route key=\"knowledge.view\" entry=\"{$deniedByGate->id}\"]]",
+            ]),
+        ]);
+
+        $response = $this->postJson(route('model-mind.chat'), [
+            'question' => 'Open launch plan',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('answer', 'Open the allowed launch plan.')
+            ->assertJsonCount(1, 'actions')
+            ->assertJsonPath('actions.0.url', url("/knowledge/{$allowed->id}"));
     }
 
     public function test_chat_endpoint_persists_messages_and_learns_answers(): void

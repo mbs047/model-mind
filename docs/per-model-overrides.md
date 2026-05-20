@@ -37,6 +37,16 @@ class Product extends Model
         ];
     }
 
+    public function modelMindAuthorization(): array
+    {
+        return [
+            'scope_to_tenant' => true,
+            'tenant_column' => 'tenant_id',
+            'gate' => true,
+            'ability' => 'view',
+        ];
+    }
+
     public function modelMindContextQuery(Builder $query): Builder
     {
         return $query->where('is_public', true);
@@ -52,4 +62,5 @@ class Product extends Model
 - `modelMindHiddenColumns()`: add package-specific hidden columns.
 - `modelMindContextRelations()`: return relations to include.
 - `modelMindRouteActions()`: define safe named-route actions for records of this model.
+- `modelMindAuthorization()`: define default user, tenant, Gate, policy, and callback controls.
 - `modelMindContextQuery()`: scope records before they enter context.

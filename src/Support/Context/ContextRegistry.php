@@ -4,6 +4,7 @@ namespace Mbs\ModelMind\Support\Context;
 
 use Illuminate\Support\Facades\Cache;
 use Mbs\ModelMind\Contracts\ModelMindContextProvider;
+use Mbs\ModelMind\Support\Auth\ModelMindAuthorization;
 use Mbs\ModelMind\Support\Learning\LearningRepository;
 
 class ContextRegistry
@@ -11,6 +12,7 @@ class ContextRegistry
     public function __construct(
         private readonly ModelContextBuilder $modelContextBuilder,
         private readonly LearningRepository $learningRepository,
+        private readonly ModelMindAuthorization $authorization,
     ) {}
 
     /**
@@ -51,7 +53,7 @@ class ContextRegistry
     {
         $seconds = (int) config('model-mind.memory.context_cache_seconds', 300);
 
-        if ($seconds <= 0) {
+        if ($seconds <= 0 || $this->authorization->requiresUncachedContext()) {
             return $this->uncachedContext();
         }
 
@@ -107,7 +109,7 @@ class ContextRegistry
      */
     private function uncachedContext(): array
     {
-        return [
+        $context = [
             'source_policy' => config('model-mind.prompt.source_policy'),
             'configured_context' => $this->configuredContext(),
             'fed_texts' => $this->learningRepository->fedTextContext(),
@@ -115,6 +117,18 @@ class ContextRegistry
             'models' => $this->modelContexts(),
             'providers' => $this->providerContexts(),
         ];
+
+        $authorization = $this->authorization->context();
+
+        if ($authorization !== []) {
+            $context = [
+                'source_policy' => $context['source_policy'],
+                'authorization' => $authorization,
+                ...collect($context)->except('source_policy')->all(),
+            ];
+        }
+
+        return $context;
     }
 
     /**

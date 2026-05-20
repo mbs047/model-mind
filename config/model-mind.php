@@ -64,6 +64,14 @@ return [
             'relations' => [],
             'limit' => 50,
             'order_by' => ['updated_at' => 'desc'],
+            'authorization' => [
+                'scope_to_user' => false,
+                'user_column' => 'user_id',
+                'scope_to_tenant' => true,
+                'tenant_column' => 'tenant_id',
+                'gate' => true,
+                'ability' => 'view',
+            ],
             'route_actions' => [
                 'products.view' => [
                     'label' => 'View product',
@@ -160,6 +168,50 @@ return [
             'encrypted:array',
             'encrypted:collection',
             'hashed',
+        ],
+    ],
+
+    'authorization' => [
+        'enabled' => filter_var(env('MODEL_MIND_AUTHORIZATION_ENABLED', true), FILTER_VALIDATE_BOOL),
+        'guard' => env('MODEL_MIND_AUTH_GUARD'),
+        'include_user_context' => filter_var(env('MODEL_MIND_INCLUDE_USER_CONTEXT', true), FILTER_VALIDATE_BOOL),
+        'user_columns' => [
+            'id',
+            'name',
+            'email',
+        ],
+        'roles' => [
+            'enabled' => filter_var(env('MODEL_MIND_INCLUDE_USER_ROLES', true), FILTER_VALIDATE_BOOL),
+            'methods' => [
+                'getRoleNames',
+                'roles',
+            ],
+            'limit' => (int) env('MODEL_MIND_USER_ROLES_LIMIT', 20),
+        ],
+        'permissions' => [
+            'enabled' => filter_var(env('MODEL_MIND_INCLUDE_USER_PERMISSIONS', false), FILTER_VALIDATE_BOOL),
+            'methods' => [
+                'getAllPermissions',
+                'getDirectPermissions',
+                'permissions',
+            ],
+            'limit' => (int) env('MODEL_MIND_USER_PERMISSIONS_LIMIT', 30),
+        ],
+        'tenant' => [
+            'enabled' => filter_var(env('MODEL_MIND_TENANT_SCOPING_ENABLED', true), FILTER_VALIDATE_BOOL),
+            'id' => env('MODEL_MIND_TENANT_ID'),
+            'resolver' => null,
+            'request_attribute' => env('MODEL_MIND_TENANT_REQUEST_ATTRIBUTE', 'tenant_id'),
+            'user_column' => env('MODEL_MIND_USER_TENANT_COLUMN', 'tenant_id'),
+            'model_column' => env('MODEL_MIND_MODEL_TENANT_COLUMN', 'tenant_id'),
+        ],
+        'models' => [
+            'use_gate' => filter_var(env('MODEL_MIND_USE_GATE', true), FILTER_VALIDATE_BOOL),
+            'ability' => env('MODEL_MIND_MODEL_ABILITY', 'view'),
+            'scope_to_user' => filter_var(env('MODEL_MIND_SCOPE_TO_USER', false), FILTER_VALIDATE_BOOL),
+            'user_column' => env('MODEL_MIND_MODEL_USER_COLUMN', 'user_id'),
+            'scope_to_tenant' => filter_var(env('MODEL_MIND_SCOPE_TO_TENANT', true), FILTER_VALIDATE_BOOL),
+            'tenant_column' => env('MODEL_MIND_MODEL_TENANT_COLUMN', 'tenant_id'),
         ],
     ],
 

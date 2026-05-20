@@ -7,12 +7,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
 use Mbs\ModelMind\Concerns\HasModelMindContext;
 use Mbs\ModelMind\Support\Actions\RouteActionRegistry;
+use Mbs\ModelMind\Support\Auth\ModelMindAuthorization;
 
 class ModelContextBuilder
 {
     public function __construct(
         private readonly ModelContextDiscoverer $discoverer,
         private readonly RouteActionRegistry $routeActions,
+        private readonly ModelMindAuthorization $authorization,
     ) {}
 
     /**
@@ -53,6 +55,8 @@ class ModelContextBuilder
             if (in_array(HasModelMindContext::class, class_uses_recursive($model), true)) {
                 $query = $model->modelMindContextQuery($query);
             }
+
+            $query = $this->authorization->scopeQuery($query, $model, $settings);
 
             $rows = $query
                 ->limit(min(
@@ -162,7 +166,7 @@ class ModelContextBuilder
             $query = $model->modelMindContextQuery($query);
         }
 
-        return $query;
+        return $this->authorization->scopeQuery($query, $model, $settings);
     }
 
     /**
@@ -172,6 +176,10 @@ class ModelContextBuilder
      */
     private function recordContext(Model $record, array $columns, array $settings): array
     {
+        if (! $this->authorization->allowsRecord($record, $settings)) {
+            return [];
+        }
+
         if (in_array(HasModelMindContext::class, class_uses_recursive($record), true)) {
             $custom = $record->toModelMindContext();
 

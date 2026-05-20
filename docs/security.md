@@ -10,6 +10,7 @@ ModelMind is explicit and deny-first.
 - It blocks encrypted and hashed casts by default.
 - It strips HTML from model context values by default.
 - It treats database values as data, not instructions.
+- It can scope context to the current user, tenant, and Laravel Gate or policy checks.
 
 ## Important Settings
 
@@ -38,5 +39,6 @@ ModelMind is explicit and deny-first.
 - Enable only the models the assistant should know about.
 - Prefer explicit `include` and `exclude` lists for sensitive models.
 - Use `modelMindContextQuery()` to restrict records.
+- Use [Authorization and User-Aware Context](authorization.md) for admin panels, SaaS apps, and customer portals.
 - Run `php artisan model-mind:inspect-context`.
 - Review [SECURITY.md](../SECURITY.md) before reporting vulnerabilities or enabling sensitive production data.

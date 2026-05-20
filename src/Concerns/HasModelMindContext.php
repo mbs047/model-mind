@@ -49,6 +49,14 @@ trait HasModelMindContext
     }
 
     /**
+     * @return array<string, mixed>
+     */
+    public function modelMindAuthorization(): array
+    {
+        return [];
+    }
+
+    /**
      * @param  Builder<static>  $query
      * @return Builder<static>
      */

@@ -7,10 +7,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Mbs\ModelMind\Concerns\HasModelMindContext;
+use Mbs\ModelMind\Support\Auth\ModelMindAuthorization;
 use Throwable;
 
 class RouteActionRegistry
 {
+    public function __construct(private readonly ModelMindAuthorization $authorization) {}
+
     /**
      * @return array<int, array<string, mixed>>
      */
@@ -111,6 +114,10 @@ PROMPT;
             $routeParameters[$name] = $value;
         }
 
+        if (! $this->routeRecordIsAuthorized($definition, $routeParameters)) {
+            return null;
+        }
+
         try {
             $url = route($definition['route'], $routeParameters);
         } catch (Throwable) {
@@ -146,6 +153,10 @@ PROMPT;
      */
     public function actionsForRecord(Model $record, array $settings = []): array
     {
+        if (! $this->authorization->allowsRecord($record, $settings)) {
+            return [];
+        }
+
         return collect($this->modelDefinitions($record::class, $settings))
             ->map(function (array $definition) use ($record): ?array {
                 $parameters = $this->routeParametersForRecord($definition, $record);
@@ -283,6 +294,8 @@ PROMPT;
                 $query = $model->modelMindContextQuery($query);
             }
 
+            $query = $this->authorization->scopeQuery($query, $model, $settings);
+
             $terms = $this->matchTerms($answer);
 
             if ($terms !== [] && $columns !== []) {
@@ -304,6 +317,8 @@ PROMPT;
             return $query
                 ->limit(max(1, (int) config('model-mind.actions.inference_limit', 50)))
                 ->get()
+                ->filter(fn (Model $record): bool => $this->authorization->allowsRecord($record, $settings))
+                ->values()
                 ->all();
         } catch (Throwable) {
             return [];
@@ -568,6 +583,88 @@ PROMPT;
      * @param  array<string, mixed>  $definition
      * @param  array<string, string>  $routeParameters
      */
+    private function routeRecordIsAuthorized(array $definition, array $routeParameters): bool
+    {
+        if (! is_string($definition['model'] ?? null) || ! is_subclass_of($definition['model'], Model::class)) {
+            return true;
+        }
+
+        if ((array) ($definition['parameters'] ?? []) === []) {
+            return true;
+        }
+
+        return $this->recordForRouteParameters($definition, $routeParameters) instanceof Model;
+    }
+
+    /**
+     * @param  array<string, mixed>  $definition
+     * @param  array<string, string>  $routeParameters
+     */
+    private function recordForRouteParameters(array $definition, array $routeParameters): ?Model
+    {
+        if (! is_string($definition['model'] ?? null) || ! is_subclass_of($definition['model'], Model::class)) {
+            return null;
+        }
+
+        try {
+            /** @var class-string<Model> $modelClass */
+            $modelClass = $definition['model'];
+            /** @var Model $model */
+            $model = new $modelClass;
+            $settings = $this->settingsForModel($modelClass);
+
+            /** @var Builder<Model> $query */
+            $query = $modelClass::query();
+
+            if (in_array(HasModelMindContext::class, class_uses_recursive($model), true)) {
+                $query = $model->modelMindContextQuery($query);
+            }
+
+            $query = $this->authorization->scopeQuery($query, $model, $settings);
+
+            foreach ((array) ($definition['parameters'] ?? []) as $routeName => $sourceColumn) {
+                if (! is_string($routeName) || ! is_string($sourceColumn) || ! array_key_exists($routeName, $routeParameters)) {
+                    continue;
+                }
+
+                $query->where($sourceColumn, $routeParameters[$routeName]);
+            }
+
+            $record = $query->first();
+
+            if (! $record instanceof Model || ! $this->authorization->allowsRecord($record, $settings)) {
+                return null;
+            }
+
+            return $record;
+        } catch (Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * @param  class-string<Model>  $modelClass
+     * @return array<string, mixed>
+     */
+    private function settingsForModel(string $modelClass): array
+    {
+        foreach ((array) config('model-mind.models', []) as $configuredModel => $settings) {
+            if ($configuredModel === $modelClass && is_array($settings)) {
+                return $settings;
+            }
+
+            if (is_int($configuredModel) && $settings === $modelClass) {
+                return [];
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $definition
+     * @param  array<string, string>  $routeParameters
+     */
     private function labelForRouteParameters(array $definition, array $routeParameters): ?string
     {
         if (
@@ -578,27 +675,11 @@ PROMPT;
             return null;
         }
 
-        foreach ((array) ($definition['parameters'] ?? []) as $routeName => $sourceColumn) {
-            if (! is_string($routeName) || ! is_string($sourceColumn) || ! array_key_exists($routeName, $routeParameters)) {
-                continue;
-            }
+        $record = $this->recordForRouteParameters($definition, $routeParameters);
 
-            try {
-                /** @var class-string<Model> $modelClass */
-                $modelClass = $definition['model'];
-                $record = $modelClass::query()
-                    ->where($sourceColumn, $routeParameters[$routeName])
-                    ->first();
-            } catch (Throwable) {
-                return null;
-            }
-
-            return $record instanceof Model
-                ? $this->labelForRecord($definition, $record)
-                : null;
-        }
-
-        return null;
+        return $record instanceof Model
+            ? $this->labelForRecord($definition, $record)
+            : null;
     }
 
     /**
