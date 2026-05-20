@@ -95,6 +95,7 @@ class ModelMindPackageTest extends TestCase
         $this->assertStringContainsString('Helpful', $html);
         $this->assertStringContainsString('Not helpful', $html);
         $this->assertStringContainsString('aria-pressed', $html);
+        $this->assertStringContainsString('Sources', $html);
         $this->assertStringNotContainsString('x-cloak', $html);
         $this->assertStringNotContainsString('x-data', $html);
     }
@@ -245,6 +246,7 @@ class ModelMindPackageTest extends TestCase
         $this->assertStringContainsString('Use the public setup checklist.', $context);
         $this->assertStringContainsString('knowledge.view', $context);
         $this->assertStringContainsString('Open knowledge', $context);
+        $this->assertStringContainsString('model_mind_source', $context);
         $this->assertStringContainsString('[[model_mind_route key=\"knowledge.view\" entry=\"1\"]]', $context);
         $this->assertStringContainsString('[[model_mind_route key=\"knowledge.trait-view\" entry=\"1\"]]', $context);
         $this->assertStringNotContainsString('super-secret', $context);
@@ -433,6 +435,65 @@ class ModelMindPackageTest extends TestCase
             'title' => 'Assistant answer',
             'content' => 'Support replies happen within one business day. Read more.',
         ]);
+    }
+
+    public function test_chat_endpoint_returns_source_citations_for_used_model_records(): void
+    {
+        $entry = KnowledgeEntry::query()->create([
+            'title' => 'Support policy',
+            'body' => 'Support replies happen within one business day.',
+            'password' => 'never-share',
+            'is_public' => true,
+        ]);
+
+        $context = app(ContextRegistry::class)->context('support policy');
+        $sourceKey = data_get($context, 'question_context.models.0.rows.0.model_mind_source.key')
+            ?? data_get($context, 'models.0.rows.0.model_mind_source.key');
+
+        $this->assertIsString($sourceKey);
+
+        Http::fake([
+            'api.openai.com/v1/responses' => function (Request $request) use ($sourceKey) {
+                $instructions = (string) $request['instructions'];
+
+                $this->assertStringContainsString('Source citations:', $instructions);
+                $this->assertStringContainsString('model_mind_source', $instructions);
+                $this->assertStringContainsString($sourceKey, $instructions);
+                $this->assertStringContainsString('Support policy', $instructions);
+
+                return Http::response([
+                    'output_text' => "Support replies happen within one business day.\n[[model_mind_source key=\"{$sourceKey}\" columns=\"title, body\"]]",
+                ]);
+            },
+        ]);
+
+        $response = $this->postJson(route('model-mind.chat'), [
+            'question' => 'How fast is support?',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('answer', 'Support replies happen within one business day.')
+            ->assertJsonCount(1, 'citations')
+            ->assertJsonPath('citations.0.model', 'Knowledge entries')
+            ->assertJsonPath('citations.0.record', 'Support policy')
+            ->assertJsonPath('citations.0.source', 'Knowledge entries: Support policy')
+            ->assertJsonPath('citations.0.columns.0', 'title')
+            ->assertJsonPath('citations.0.columns.1', 'body')
+            ->assertJsonPath('citations.0.action.url', url("/knowledge/{$entry->id}"));
+
+        $assistantMessage = ModelMindMessage::query()
+            ->where('role', ModelMindMessage::ROLE_ASSISTANT)
+            ->firstOrFail();
+
+        $this->assertSame('Support policy', $assistantMessage->metadata['citations'][0]['record'] ?? null);
+
+        $this->getJson(route('model-mind.session', [
+            'session_id' => $response->json('session_id'),
+        ]))
+            ->assertOk()
+            ->assertJsonPath('messages.1.citations.0.record', 'Support policy')
+            ->assertJsonPath('messages.1.citations.0.action.url', url("/knowledge/{$entry->id}"));
     }
 
     public function test_chat_endpoint_adds_question_relevant_records_outside_static_context(): void
@@ -647,7 +708,9 @@ class ModelMindPackageTest extends TestCase
             ->assertJsonPath('answer', 'يمكنك فتح صفحة عرض المنتج Apple iPhone 15 128GB للحصول على التفاصيل.')
             ->assertJsonPath('actions.0.label', 'View Apple iPhone 15 128GB')
             ->assertJsonPath('actions.0.kind', 'route')
-            ->assertJsonPath('actions.0.url', url("/knowledge/{$entry->id}"));
+            ->assertJsonPath('actions.0.url', url("/knowledge/{$entry->id}"))
+            ->assertJsonPath('citations.0.record', 'Apple iPhone 15 128GB')
+            ->assertJsonPath('citations.0.action.url', url("/knowledge/{$entry->id}"));
     }
 
     public function test_feedback_and_manual_learning_feed_future_context(): void

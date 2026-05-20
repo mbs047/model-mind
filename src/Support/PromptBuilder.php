@@ -22,6 +22,7 @@ class PromptBuilder
         $languageInstructions = $this->stringConfig('model-mind.assistant.language_instructions', 'Answer in the same language as the visitor.');
         $extraInstructions = $this->stringConfig('model-mind.prompt.extra_instructions', '');
         $routeInstructions = $this->routeActions->promptInstructions();
+        $citationInstructions = $this->citationInstructions();
 
         return sprintf(<<<'PROMPT'
 You are %s, the ModelMind assistant installed in this Laravel application.
@@ -38,10 +39,11 @@ Rules:
 - Language: %s
 %s
 %s
+%s
 
 ENABLED APPLICATION CONTEXT:
 %s
-PROMPT, $assistantName, $fallbackAnswer, $toneInstructions, $languageInstructions, $extraInstructions, $routeInstructions, $this->contextRegistry->toPrompt($question));
+PROMPT, $assistantName, $fallbackAnswer, $toneInstructions, $languageInstructions, $extraInstructions, $routeInstructions, $citationInstructions, $this->contextRegistry->toPrompt($question));
     }
 
     public function input(string $question, ModelMindSession $session): string
@@ -90,5 +92,33 @@ PROMPT, $assistantName, $fallbackAnswer, $toneInstructions, $languageInstruction
         $value = config($key, $fallback);
 
         return is_string($value) && filled($value) ? $value : $fallback;
+    }
+
+    private function citationInstructions(): string
+    {
+        if (! (bool) config('model-mind.features.citations', true) || ! (bool) config('model-mind.citations.enabled', true)) {
+            return '';
+        }
+
+        $token = $this->sourceToken();
+
+        return <<<PROMPT
+
+Source citations:
+- When an answer uses facts from an enabled model row, append that row's source token on its own line.
+- Use only source tokens already present in enabled context. Do not invent source keys.
+- Add a columns attribute listing the fields you used when useful, for example: [[{$token} key="<source-key>" columns="name, price"]].
+- If you answer in a non-English language, still copy source tokens exactly. Do not translate the token name, key, parameter names, quotes, or values.
+- The application will convert valid source tokens into source cards and remove the token from the visitor-facing answer.
+PROMPT;
+    }
+
+    private function sourceToken(): string
+    {
+        $token = config('model-mind.citations.token', 'model_mind_source');
+
+        return is_string($token) && preg_match('/^[A-Za-z][A-Za-z0-9_:-]*$/', $token) === 1
+            ? $token
+            : 'model_mind_source';
     }
 }

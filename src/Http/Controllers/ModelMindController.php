@@ -13,6 +13,7 @@ use Mbs\ModelMind\Http\Requests\FeedbackModelMindMessageRequest;
 use Mbs\ModelMind\Models\ModelMindMessage;
 use Mbs\ModelMind\Models\ModelMindSession;
 use Mbs\ModelMind\Support\Actions\ActionExtractor;
+use Mbs\ModelMind\Support\Citations\SourceCitationExtractor;
 use Mbs\ModelMind\Support\Learning\LearningRepository;
 use Mbs\ModelMind\Support\PromptBuilder;
 use RuntimeException;
@@ -24,6 +25,7 @@ class ModelMindController extends Controller
         ModelMindProvider $provider,
         PromptBuilder $promptBuilder,
         ActionExtractor $actions,
+        SourceCitationExtractor $citations,
         LearningRepository $learning,
     ): JsonResponse {
         $session = $this->resolveSessionFromUuid($request->validated('session_id'), $request);
@@ -52,13 +54,15 @@ class ModelMindController extends Controller
             ], 503);
         }
 
-        $prepared = $actions->prepare($response->answer);
+        $cited = $citations->prepare($response->answer, $question);
+        $prepared = $actions->prepare($cited['answer']);
         $assistantMessage = $session->messages()->create([
             'role' => ModelMindMessage::ROLE_ASSISTANT,
             'content' => $prepared['answer'],
             'metadata' => [
                 ...$response->metadata,
                 'actions' => $prepared['actions'],
+                'citations' => $cited['citations'],
             ],
         ]);
         $learning->rememberAssistantAnswer($prepared['answer'], [
@@ -71,6 +75,7 @@ class ModelMindController extends Controller
         return response()->json([
             'answer' => $prepared['answer'],
             'actions' => $prepared['actions'],
+            'citations' => $cited['citations'],
             'session_id' => $session->uuid,
             'expires_at' => $this->sessionExpiresAt($session),
             'user_message_id' => $userMessage->uuid,
@@ -272,7 +277,7 @@ class ModelMindController extends Controller
     }
 
     /**
-     * @return array{id: string, role: string, content: string, actions: array<int, array{label: string, url: string, kind: string}>, feedback: string|null, created_at: string|null}
+     * @return array{id: string, role: string, content: string, actions: array<int, array{label: string, url: string, kind: string}>, citations: array<int, array{model: string, record: string, source: string, columns: array<int, string>, action: array{label: string, url: string, kind: string}|null}>, feedback: string|null, created_at: string|null}
      */
     private function messagePayload(ModelMindMessage $message): array
     {
@@ -281,6 +286,7 @@ class ModelMindController extends Controller
             'role' => $message->role,
             'content' => $message->content,
             'actions' => $this->messageActions($message),
+            'citations' => $this->messageCitations($message),
             'feedback' => $message->feedback,
             'created_at' => $message->created_at?->toJSON(),
         ];
@@ -309,6 +315,69 @@ class ModelMindController extends Controller
             ])
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<int, array{model: string, record: string, source: string, columns: array<int, string>, action: array{label: string, url: string, kind: string}|null}>
+     */
+    private function messageCitations(ModelMindMessage $message): array
+    {
+        $citations = $message->metadata['citations'] ?? [];
+
+        if (! is_array($citations)) {
+            return [];
+        }
+
+        return collect($citations)
+            ->filter(fn (mixed $citation): bool => is_array($citation)
+                && is_string($citation['model'] ?? null)
+                && is_string($citation['record'] ?? null)
+                && is_string($citation['source'] ?? null))
+            ->map(fn (array $citation): array => [
+                'model' => $citation['model'],
+                'record' => $citation['record'],
+                'source' => $citation['source'],
+                'columns' => $this->citationColumns($citation),
+                'action' => $this->citationAction($citation),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $citation
+     * @return array<int, string>
+     */
+    private function citationColumns(array $citation): array
+    {
+        return collect((array) ($citation['columns'] ?? []))
+            ->filter(fn (mixed $column): bool => is_string($column) && preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $column) === 1)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $citation
+     * @return array{label: string, url: string, kind: string}|null
+     */
+    private function citationAction(array $citation): ?array
+    {
+        $action = $citation['action'] ?? null;
+
+        if (
+            ! is_array($action)
+            || ! is_string($action['label'] ?? null)
+            || ! is_string($action['url'] ?? null)
+            || ! is_string($action['kind'] ?? null)
+        ) {
+            return null;
+        }
+
+        return [
+            'label' => $action['label'],
+            'url' => $action['url'],
+            'kind' => $action['kind'],
+        ];
     }
 
     /**

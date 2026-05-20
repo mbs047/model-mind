@@ -30,6 +30,8 @@ ModelMind only reads models that are explicitly enabled in `config/model-mind.ph
 - `limit`: max records for this model before global security limits are applied.
 - `order_by`: column and direction pairs used to sort records.
 - `search_columns`: allowed columns used by question-aware retrieval.
+- `source_label_column`: record display column used by source citation cards.
+- `source_label_template`: optional citation label template such as `{name} ({sku})`.
 - `authorization`: per-model user, tenant, Gate, policy, and callback controls.
 - `route_actions`: safe Laravel named-route actions that can become chat buttons.
 - `label_column` and `label_template`: optional route action settings for record-specific button labels.
@@ -52,3 +54,4 @@ Use this command after every major config change.
 - [Per-Model Overrides](per-model-overrides.md)
 - [Question-Aware Retrieval](retrieval.md)
 - [Named Route Actions](route-actions.md)
+- [Source Citations](source-citations.md)

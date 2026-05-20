@@ -64,6 +64,8 @@ return [
             'relations' => [],
             'limit' => 50,
             'order_by' => ['updated_at' => 'desc'],
+            'source_label_column' => 'name',
+            'source_label_template' => '{name}',
             'authorization' => [
                 'scope_to_user' => false,
                 'user_column' => 'user_id',
@@ -240,6 +242,7 @@ return [
     'features' => [
         'feedback' => true,
         'actions' => true,
+        'citations' => true,
         'voice' => false,
         'streaming' => false,
         'realtime' => false,
@@ -263,6 +266,23 @@ return [
                 'kind' => 'route',
             ],
             */
+        ],
+    ],
+
+    'citations' => [
+        'enabled' => filter_var(env('MODEL_MIND_CITATIONS_ENABLED', true), FILTER_VALIDATE_BOOL),
+        'token' => env('MODEL_MIND_SOURCE_TOKEN', 'model_mind_source'),
+        'infer_from_answer' => filter_var(env('MODEL_MIND_INFER_SOURCE_CITATIONS', true), FILTER_VALIDATE_BOOL),
+        'max_citations' => (int) env('MODEL_MIND_MAX_CITATIONS', 4),
+        'max_columns' => (int) env('MODEL_MIND_CITATION_COLUMNS', 4),
+        'label_columns' => [
+            'name',
+            'title',
+            'label',
+            'sku',
+            'code',
+            'slug',
+            'id',
         ],
     ],
 

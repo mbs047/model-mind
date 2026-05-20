@@ -103,6 +103,8 @@ Templates can use model column placeholders such as `{name}`, `{sku}`, `{title}`
 
 Dynamic labels are resolved server-side from the configured model record, not trusted from the AI response. Global route actions without a model continue to use the static `label` unless `allow_label_override` is enabled.
 
+Route actions also power source citation buttons. When a cited record has a valid route action, the source card can include the same safe Laravel route button beside the model and record label.
+
 ## Settings
 
 ```env
@@ -125,3 +127,7 @@ MODEL_MIND_ROUTE_ACTION_INFERENCE_LIMIT=50
 Keep `allow_label_override` disabled unless you trust the model to choose button labels. With the default setting, labels always come from your config or model trait.
 
 Keep `infer_from_answer` enabled when your visitors may chat in multiple languages. Disable it only if you want links to appear exclusively when the AI copies exact route tokens.
+
+## Related Guides
+
+- [Source Citations](source-citations.md)

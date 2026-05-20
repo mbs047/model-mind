@@ -6,6 +6,15 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+## v1.0.11 - 2026-05-21
+
+### Added
+
+- Source citations for assistant answers with model label, record label, cited columns, and optional route action buttons.
+- Source citation prompt tokens plus server-side token validation and cleanup.
+- Citation inference for answers that clearly mention enabled records, including multilingual responses.
+- Configurable citation labels, token name, max citation count, max cited columns, and source citation documentation.
+
 ## v1.0.10 - 2026-05-20
 
 ### Added

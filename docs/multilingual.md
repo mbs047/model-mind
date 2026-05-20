@@ -39,16 +39,30 @@ MODEL_MIND_INFER_ROUTE_ACTIONS=true
 
 This only creates buttons from routes you configured in `route_actions` or `actions.routes`; it does not let the AI invent URLs.
 
+## Source Citations
+
+Source citations also work in multilingual chats. If the assistant answers in Arabic, Spanish, or another language while mentioning a product name stored in English, ModelMind can still attach the matching source card:
+
+```env
+MODEL_MIND_CITATIONS_ENABLED=true
+MODEL_MIND_INFER_SOURCE_CITATIONS=true
+```
+
+The visible answer can be translated, but source and route tokens stay machine-readable and are validated by the server before they become citations or buttons.
+
 ## Best Practices
 
 - Keep product names, SKUs, order numbers, and route parameters in the enabled context.
 - Add `search_columns` for the fields visitors are likely to mention.
 - Use `label_column` or `label_template` so buttons show clear record names.
+- Use `source_label_column` or `source_label_template` so citation cards show clear record names.
 - Keep `MODEL_MIND_INFER_ROUTE_ACTIONS=true` for multilingual storefronts and support tools.
+- Keep `MODEL_MIND_INFER_SOURCE_CITATIONS=true` when visitors may ask in different languages.
 - Use `MODEL_MIND_LANGUAGE` to match your support policy.
 
 ## Related Guides
 
 - [Models and Context](models.md)
 - [Named Route Actions](route-actions.md)
+- [Source Citations](source-citations.md)
 - [Examples](examples.md)

@@ -73,7 +73,7 @@ class ModelContextBuilder
         }
 
         return [
-            'label' => $settings['label'] ?? $this->traitLabel($model) ?? class_basename($modelClass),
+            'label' => $this->modelLabel($model, $settings),
             'description' => $settings['description'] ?? $this->traitDescription($model),
             'model' => $modelClass,
             'columns' => $columns,
@@ -131,7 +131,7 @@ class ModelContextBuilder
         }
 
         return [
-            'label' => $settings['label'] ?? $this->traitLabel($model) ?? class_basename($modelClass),
+            'label' => $this->modelLabel($model, $settings),
             'description' => $settings['description'] ?? $this->traitDescription($model),
             'model' => $modelClass,
             'matched_terms' => $terms,
@@ -184,7 +184,7 @@ class ModelContextBuilder
             $custom = $record->toModelMindContext();
 
             if ($custom !== []) {
-                return $this->withRouteActions($record, $settings, $this->cleanArray($custom));
+                return $this->withRecordMetadata($record, $settings, $this->cleanArray($custom));
             }
         }
 
@@ -193,7 +193,7 @@ class ModelContextBuilder
             ->reject(fn (mixed $value): bool => $value === null || $value === '' || $value === [])
             ->all();
 
-        return $this->withRouteActions($record, $settings, $context);
+        return $this->withRecordMetadata($record, $settings, $context);
     }
 
     /**
@@ -281,6 +281,18 @@ class ModelContextBuilder
             : null;
     }
 
+    /**
+     * @param  array<string, mixed>  $settings
+     */
+    private function modelLabel(Model $model, array $settings): string
+    {
+        $label = $settings['label'] ?? $this->traitLabel($model) ?? class_basename($model);
+
+        return is_scalar($label)
+            ? str((string) $label)->squish()->limit(100, '')->toString()
+            : class_basename($model);
+    }
+
     private function cleanValue(mixed $value): mixed
     {
         if (is_array($value)) {
@@ -335,17 +347,161 @@ class ModelContextBuilder
      * @param  array<string, mixed>  $settings
      * @return array<string, mixed>
      */
-    private function withRouteActions(Model $record, array $settings, array $context): array
+    private function withRecordMetadata(Model $record, array $settings, array $context): array
     {
         $actions = $this->routeActions->actionsForRecord($record, $settings);
 
-        if ($actions === []) {
-            return $context;
+        if ($this->sourceCitationsEnabled()) {
+            $context = [
+                ...$context,
+                'model_mind_source' => $this->sourceCitation($record, $settings, $context),
+            ];
         }
 
+        if ($actions !== []) {
+            $context = [
+                ...$context,
+                'model_mind_route_actions' => $actions,
+            ];
+        }
+
+        return $context;
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     * @param  array<string, mixed>  $context
+     * @return array{key: string, model: string, record: string, columns: array<int, string>, token: string}
+     */
+    private function sourceCitation(Model $record, array $settings, array $context): array
+    {
+        $columns = $this->sourceColumns($context);
+        $key = $this->sourceKey($record, $context);
+
         return [
-            ...$context,
-            'model_mind_route_actions' => $actions,
+            'key' => $key,
+            'model' => $this->modelLabel($record, $settings),
+            'record' => $this->sourceRecordLabel($record, $settings, $context),
+            'columns' => $columns,
+            'token' => sprintf('[[%s key="%s"]]', $this->sourceToken(), addcslashes($key, '\\"')),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     * @return array<int, string>
+     */
+    private function sourceColumns(array $context): array
+    {
+        return collect($context)
+            ->keys()
+            ->filter(fn (mixed $column): bool => is_string($column)
+                && ! str_starts_with($column, 'model_mind_')
+                && preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $column) === 1)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $context
+     */
+    private function sourceKey(Model $record, array $context): string
+    {
+        $identifier = $record->getKey();
+        $identifier = is_scalar($identifier)
+            ? (string) $identifier
+            : json_encode($context, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        return substr(hash('sha256', $record::class.'|'.($identifier ?: spl_object_id($record))), 0, 16);
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     * @param  array<string, mixed>  $context
+     */
+    private function sourceRecordLabel(Model $record, array $settings, array $context): string
+    {
+        $template = $this->cleanSourceLabelTemplate($settings['source_label_template'] ?? '');
+
+        if ($template !== '') {
+            $rendered = preg_replace_callback('/\{([A-Za-z_][A-Za-z0-9_]*)\}/', function (array $match) use ($record, $context): string {
+                $column = (string) ($match[1] ?? '');
+                $value = $context[$column] ?? $record->getAttribute($column);
+
+                return is_scalar($value) ? $this->cleanSourceLabel($value) : '';
+            }, $template) ?? $template;
+
+            $rendered = $this->cleanSourceLabel($rendered);
+
+            if ($rendered !== '') {
+                return $rendered;
+            }
+        }
+
+        $configuredColumn = $this->cleanColumnName($settings['source_label_column'] ?? '');
+        $labelColumns = collect([
+            $configuredColumn,
+            ...((array) config('model-mind.citations.label_columns', [])),
+        ])
+            ->filter(fn (mixed $column): bool => is_string($column) && $this->cleanColumnName($column) !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        foreach ($labelColumns as $column) {
+            $value = $context[$column] ?? $record->getAttribute($column);
+
+            if (is_scalar($value)) {
+                $label = $this->cleanSourceLabel($value);
+
+                if ($label !== '') {
+                    return $label;
+                }
+            }
+        }
+
+        $key = $record->getKey();
+
+        return is_scalar($key) && filled((string) $key)
+            ? '#'.str((string) $key)->squish()->limit(40, '')->toString()
+            : class_basename($record);
+    }
+
+    private function sourceCitationsEnabled(): bool
+    {
+        return (bool) config('model-mind.features.citations', true)
+            && (bool) config('model-mind.citations.enabled', true);
+    }
+
+    private function sourceToken(): string
+    {
+        $token = config('model-mind.citations.token', 'model_mind_source');
+
+        return is_string($token) && preg_match('/^[A-Za-z][A-Za-z0-9_:-]*$/', $token) === 1
+            ? $token
+            : 'model_mind_source';
+    }
+
+    private function cleanColumnName(mixed $name): string
+    {
+        return is_string($name) && preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name) === 1 ? $name : '';
+    }
+
+    private function cleanSourceLabel(mixed $label): string
+    {
+        if (! is_scalar($label)) {
+            return '';
+        }
+
+        return str(strip_tags((string) $label))->squish()->limit(100, '')->toString();
+    }
+
+    private function cleanSourceLabelTemplate(mixed $template): string
+    {
+        if (! is_scalar($template)) {
+            return '';
+        }
+
+        return str(strip_tags((string) $template))->squish()->limit(140, '')->toString();
     }
 }

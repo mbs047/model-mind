@@ -51,6 +51,7 @@ Enable one safe model in `config/model-mind.php`:
         'columns' => 'auto',
         'include' => ['name', 'sku', 'brand', 'category', 'price', 'stock_status'],
         'exclude' => ['cost', 'supplier_notes', 'internal_notes'],
+        'source_label_column' => 'name',
         'limit' => 50,
         'order_by' => ['updated_at' => 'desc'],
         'route_actions' => [
@@ -120,6 +121,9 @@ MODEL_MIND_SESSION_LIFETIME_MINUTES=120
 MODEL_MIND_DEFAULT_QUESTIONS="Which products are low in stock?|Show recent pending orders|What support policy should I follow?"
 MODEL_MIND_INFER_ROUTE_ACTIONS=true
 MODEL_MIND_ROUTE_ACTION_INFERENCE_LIMIT=50
+MODEL_MIND_CITATIONS_ENABLED=true
+MODEL_MIND_INFER_SOURCE_CITATIONS=true
+MODEL_MIND_MAX_CITATIONS=4
 
 MODEL_MIND_LEARNING_ENABLED=true
 MODEL_MIND_LEARN_FROM_ASSISTANT_ANSWERS=true
@@ -188,6 +192,8 @@ MODEL_MIND_LEARNING_CONTEXT_LIMIT=12
         'exclude' => ['cost', 'margin', 'supplier_notes', 'internal_notes'],
         'relations' => ['category:id,name'],
         'search_columns' => ['name', 'sku', 'brand', 'category', 'summary'],
+        'source_label_column' => 'name',
+        'source_label_template' => '{name} ({sku})',
         'limit' => 50,
         'order_by' => ['updated_at' => 'desc'],
         'route_actions' => [
@@ -212,6 +218,8 @@ MODEL_MIND_LEARNING_CONTEXT_LIMIT=12
         'exclude' => ['payment_token', 'billing_address', 'card_last_four'],
         'relations' => ['customer:id,name,email'],
         'search_columns' => ['order_number', 'status'],
+        'source_label_column' => 'order_number',
+        'source_label_template' => 'Order {order_number}',
         'limit' => 25,
         'order_by' => ['placed_at' => 'desc'],
         'route_actions' => [
@@ -294,6 +302,7 @@ MODEL_MIND_LEARNING_CONTEXT_LIMIT=12
 'features' => [
     'feedback' => true,
     'actions' => true,
+    'citations' => true,
     'voice' => false,
     'streaming' => false,
     'realtime' => false,
@@ -314,6 +323,15 @@ MODEL_MIND_LEARNING_CONTEXT_LIMIT=12
             'kind' => 'route',
         ],
     ],
+],
+
+'citations' => [
+    'enabled' => filter_var(env('MODEL_MIND_CITATIONS_ENABLED', true), FILTER_VALIDATE_BOOL),
+    'token' => 'model_mind_source',
+    'infer_from_answer' => filter_var(env('MODEL_MIND_INFER_SOURCE_CITATIONS', true), FILTER_VALIDATE_BOOL),
+    'max_citations' => (int) env('MODEL_MIND_MAX_CITATIONS', 4),
+    'max_columns' => 4,
+    'label_columns' => ['name', 'title', 'label', 'sku', 'code', 'slug', 'id'],
 ],
 
 'learning' => [

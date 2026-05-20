@@ -88,6 +88,7 @@
             localId: `local-${state.nextLocalId++}`,
             role: 'assistant',
             content: initialMessage,
+            citations: [],
         }];
 
         const nextSessionExpiresAt = () => (
@@ -138,6 +139,7 @@
                             role: message.role,
                             content: message.content,
                             actions: Array.isArray(message.actions) ? message.actions : [],
+                            citations: Array.isArray(message.citations) ? message.citations : [],
                             feedback: message.feedback || null,
                         })),
                 }));
@@ -174,6 +176,7 @@
                             role: message.role,
                             content: message.content,
                             actions: Array.isArray(message.actions) ? message.actions : [],
+                            citations: Array.isArray(message.citations) ? message.citations : [],
                             feedback: message.feedback || null,
                         }));
                 }
@@ -202,6 +205,7 @@
                     role: message.role,
                     content: message.content,
                     actions: Array.isArray(message.actions) ? message.actions : [],
+                    citations: Array.isArray(message.citations) ? message.citations : [],
                     feedback: message.feedback || null,
                 }));
         };
@@ -297,6 +301,68 @@
             });
         };
 
+        const renderCitations = (message) => {
+            if (message.role !== 'assistant' || message.pendingAssistant || !Array.isArray(message.citations) || message.citations.length === 0) {
+                return null;
+            }
+
+            return createElement('div', {
+                className: 'mt-2 space-y-2 rounded-2xl border border-slate-200 bg-white/80 p-2.5 shadow-sm dark:border-white/10 dark:bg-slate-950/80',
+                children: [
+                    createElement('p', {
+                        className: 'px-1 text-[0.68rem] font-black uppercase tracking-normal text-slate-500 dark:text-slate-400',
+                        text: 'Sources',
+                    }),
+                    ...message.citations.map((citation) => {
+                        const sourceAction = citation.action?.url
+                            ? createElement('button', {
+                                className: 'rounded-full border border-slate-200 px-2.5 py-1 text-[0.68rem] font-black text-slate-700 transition hover:border-slate-400 hover:text-slate-950 dark:border-white/10 dark:text-slate-200 dark:hover:border-white/25',
+                                text: citation.action.label || 'Open',
+                                attributes: { type: 'button' },
+                            })
+                            : null;
+
+                        if (sourceAction) {
+                            sourceAction.addEventListener('click', () => handleAction(citation.action));
+                        }
+
+                        return createElement('div', {
+                            className: 'rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 dark:border-white/10 dark:bg-slate-900',
+                            children: [
+                                createElement('div', {
+                                    className: 'flex items-start justify-between gap-2',
+                                    children: [
+                                        createElement('div', {
+                                            className: 'min-w-0',
+                                            children: [
+                                                createElement('p', {
+                                                    className: 'truncate text-[0.68rem] font-bold text-slate-500 dark:text-slate-400',
+                                                    text: citation.model || 'Model',
+                                                }),
+                                                createElement('p', {
+                                                    className: 'truncate text-xs font-black text-slate-800 dark:text-slate-100',
+                                                    text: citation.record || citation.source || 'Record',
+                                                }),
+                                            ],
+                                        }),
+                                        ...(sourceAction ? [sourceAction] : []),
+                                    ],
+                                }),
+                                ...(Array.isArray(citation.columns) && citation.columns.length
+                                    ? [
+                                        createElement('p', {
+                                            className: 'mt-1 break-words text-[0.68rem] font-semibold text-slate-500 dark:text-slate-400',
+                                            text: `Fields: ${citation.columns.join(', ')}`,
+                                        }),
+                                    ]
+                                    : []),
+                            ],
+                        });
+                    }),
+                ],
+            });
+        };
+
         const renderFeedback = (message) => {
             if (!state.feedbackEnabled || message.role !== 'assistant' || !message.id || message.pendingAssistant) {
                 return null;
@@ -372,10 +438,15 @@
                 ],
             });
             const actions = renderActions(message);
+            const citations = renderCitations(message);
             const feedback = renderFeedback(message);
 
             if (actions) {
                 stack.append(actions);
+            }
+
+            if (citations) {
+                stack.append(citations);
             }
 
             if (feedback) {
@@ -454,6 +525,7 @@
                 role: 'user',
                 content: text,
                 actions: [],
+                citations: [],
                 feedback: null,
             };
             state.messages.push(userMessage);
@@ -505,6 +577,7 @@
                     role: 'assistant',
                     content: payload.answer || fallbackAnswer,
                     actions: Array.isArray(payload.actions) ? payload.actions : [],
+                    citations: Array.isArray(payload.citations) ? payload.citations : [],
                     feedback: null,
                 });
             } catch (error) {

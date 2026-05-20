@@ -24,6 +24,7 @@ This page is the compact starting point for ModelMind. Each major feature now ha
 - [Per-Model Overrides](per-model-overrides.md)
 - [Question-Aware Retrieval](retrieval.md)
 - [Named Route Actions](route-actions.md)
+- [Source Citations](source-citations.md)
 - [Authorization and User-Aware Context](authorization.md)
 - [Security Controls](security.md)
 - [Learning Memory](learning-memory.md)
@@ -58,4 +59,4 @@ MODEL_MIND_MODEL=gpt-5-nano
 @modelMind
 ```
 
-For repeated route buttons, configure `label_column` or `label_template` so actions can show record-specific labels such as `View Samsung Galaxy S24 Ultra`.
+For repeated route buttons, configure `label_column` or `label_template` so actions can show record-specific labels such as `View Samsung Galaxy S24 Ultra`. For trusted answer debugging, keep source citations enabled and configure `source_label_column` or `source_label_template`.
