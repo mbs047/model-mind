@@ -7,6 +7,13 @@ This page shows two complete setup styles:
 
 Use the simple example first, then copy pieces from the advanced example as your application needs them.
 
+For an application-specific starting point, inspect the built-in presets:
+
+```bash
+php artisan model-mind:preset --list
+php artisan model-mind:preset store --json
+```
+
 ## Simple Example
 
 Install the package, publish its files, and run the migration:
@@ -92,6 +99,7 @@ OPENAI_ORGANIZATION=org-your-organization-id
 
 MODEL_MIND_NAME=ModelMind
 MODEL_MIND_BRAND_MARK=MBS
+MODEL_MIND_PRESET=store
 MODEL_MIND_SUBTITLE="AI assistant powered by your application data"
 MODEL_MIND_LANGUAGE="Answer in the same language as the latest visitor message unless explicitly asked otherwise."
 MODEL_MIND_MODEL=gpt-5-nano
@@ -523,6 +531,7 @@ php artisan model-mind:inspect-context
 php artisan model-mind:inspect-context --json
 php artisan model-mind:clear-context
 php artisan model-mind:learn "Priority support customers receive a same-day response." --title="Priority support policy"
+php artisan model-mind:preset store --json
 ```
 
 Headless clients can bootstrap their UI from:
@@ -536,6 +545,7 @@ POST /api/model-mind/chat
 
 - [Installation](installation.md)
 - [Blade Rendering](blade-rendering.md)
+- [Presets](presets.md)
 - [Default Questions](default-questions.md)
 - [Models and Context](models.md)
 - [Named Route Actions](route-actions.md)

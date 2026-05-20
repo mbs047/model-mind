@@ -21,6 +21,7 @@ Try ModelMind in [Market Lane Store](https://mbs-sample.on-forge.com/), a sample
 - Drop-in Blade chat modal with Tailwind-friendly styles.
 - Headless JSON API mode for React, Vue, Inertia, and mobile clients.
 - `@modelMind`, `@modelMindModal`, `@modelMindStyles`, and `@modelMindScripts` directives.
+- Built-in presets for store, admin, support, docs, and CRM applications.
 - Configurable widget position, width, offset, z-index, labels, prompt tone, and brand mark.
 - Model-aware answers from only the Eloquent models you explicitly enable.
 - User-aware context with guard, role, tenant, and Gate/policy scoping.
@@ -100,6 +101,7 @@ That is the whole first path: install, configure credentials, render the widget,
 
 ```env
 MODEL_MIND_BRAND_MARK=MBS
+MODEL_MIND_PRESET=store
 MODEL_MIND_THEME=auto
 MODEL_MIND_POSITION=bottom-right
 MODEL_MIND_WIDTH=25rem
@@ -124,6 +126,13 @@ Supported widget positions are `bottom-right`, `bottom-left`, `bottom-center`, `
 ## Full Documentation
 
 Read the documentation index in [docs/README.md](docs/README.md). Start with [docs/examples.md](docs/examples.md) for simple and advanced copyable setups. Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, headless API mode, model configuration, multilingual answers, retrieval, route actions, source citations, authorization, security, learning memory, feedback, table prefixes, providers, routes, performance, and testing.
+
+For starter configuration by application type, run:
+
+```bash
+php artisan model-mind:preset --list
+php artisan model-mind:preset store --json
+```
 
 For custom UI work, read [docs/customizing-the-modal.md](docs/customizing-the-modal.md). You can publish the default Blade views, or point ModelMind to a completely new modal, styles, and script from config.
 

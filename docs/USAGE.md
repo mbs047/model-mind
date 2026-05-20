@@ -6,16 +6,18 @@ This page is the compact starting point for ModelMind. Each major feature now ha
 
 1. Install the package: [Installation](installation.md)
 2. Copy a starting setup: [Examples](examples.md)
-3. Configure OpenAI: [OpenAI Configuration](openai.md)
-4. Render the widget: [Blade Rendering](blade-rendering.md)
-5. Configure starter prompts: [Default Questions](default-questions.md)
-6. Enable application data: [Models and Context](models.md)
-7. Inspect what the assistant can see: [Security Controls](security.md)
+3. Choose a preset: [Presets](presets.md)
+4. Configure OpenAI: [OpenAI Configuration](openai.md)
+5. Render the widget: [Blade Rendering](blade-rendering.md)
+6. Configure starter prompts: [Default Questions](default-questions.md)
+7. Enable application data: [Models and Context](models.md)
+8. Inspect what the assistant can see: [Security Controls](security.md)
 
 ## Feature Guides
 
 - [Installation](installation.md)
 - [Examples](examples.md)
+- [Presets](presets.md)
 - [OpenAI Configuration](openai.md)
 - [Blade Rendering](blade-rendering.md)
 - [Default Questions](default-questions.md)
@@ -59,5 +61,7 @@ MODEL_MIND_MODEL=gpt-5-nano
 ```blade
 @modelMind
 ```
+
+Use `php artisan model-mind:preset --list` to see store, admin, support, docs, and CRM recommendations.
 
 For repeated route buttons, configure `label_column` or `label_template` so actions can show record-specific labels such as `View Samsung Galaxy S24 Ultra`. For trusted answer debugging, keep source citations enabled and configure `source_label_column` or `source_label_template`.

@@ -13,6 +13,7 @@ use Mbs\ModelMind\Console\Commands\InspectModelMindContextCommand;
 use Mbs\ModelMind\Console\Commands\InstallModelMindCommand;
 use Mbs\ModelMind\Console\Commands\LearnModelMindKnowledgeCommand;
 use Mbs\ModelMind\Console\Commands\PublishModelMindAssetsCommand;
+use Mbs\ModelMind\Console\Commands\ShowModelMindPresetCommand;
 use Mbs\ModelMind\Contracts\ModelMindProvider;
 use Mbs\ModelMind\Support\Providers\OpenAiModelMindProvider;
 use Mbs\ModelMind\Support\Views\ModelMindViewRenderer;
@@ -121,6 +122,7 @@ class ModelMindServiceProvider extends ServiceProvider
             InspectModelMindContextCommand::class,
             LearnModelMindKnowledgeCommand::class,
             PublishModelMindAssetsCommand::class,
+            ShowModelMindPresetCommand::class,
         ]);
     }
 }

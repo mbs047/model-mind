@@ -6,6 +6,15 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+## v1.0.13 - 2026-05-21
+
+### Added
+
+- Built-in configuration presets for store, admin, support, docs, and CRM Laravel applications.
+- `MODEL_MIND_PRESET` project marker and `model-mind:preset` Artisan command for listing, previewing, and exporting preset recommendations.
+- Preset recommendations for model config, starter questions, retrieval settings, security settings, and route actions.
+- Preset documentation with guidance for adapting each application type safely.
+
 ## v1.0.12 - 2026-05-21
 
 ### Added

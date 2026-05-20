@@ -16,6 +16,7 @@ use Mbs\ModelMind\Models\ModelMindMessage;
 use Mbs\ModelMind\Models\ModelMindSession;
 use Mbs\ModelMind\Support\Context\ContextRegistry;
 use Mbs\ModelMind\Support\Database\TableNames;
+use Mbs\ModelMind\Support\Presets\ModelMindPresetRepository;
 use Mbs\ModelMind\Tests\Fixtures\KnowledgeEntry;
 use Mbs\ModelMind\Tests\Fixtures\User;
 use Mbs\ModelMind\Tests\TestCase;
@@ -264,6 +265,61 @@ class ModelMindPackageTest extends TestCase
             ->assertJsonPath('messages.0.role', ModelMindMessage::ROLE_USER)
             ->assertJsonPath('messages.1.role', ModelMindMessage::ROLE_ASSISTANT)
             ->assertJsonPath('messages.1.actions.0.url', url("/knowledge/{$entry->id}"));
+    }
+
+    public function test_presets_expose_complete_configuration_recommendations(): void
+    {
+        $presets = app(ModelMindPresetRepository::class);
+
+        $this->assertSame(['store', 'admin', 'support', 'docs', 'crm'], $presets->names());
+
+        foreach ($presets->names() as $name) {
+            $preset = $presets->find($name);
+
+            $this->assertIsArray($preset);
+            $this->assertNotEmpty($preset['questions']);
+            $this->assertNotEmpty($preset['models']);
+            $this->assertNotEmpty($preset['retrieval']);
+            $this->assertNotEmpty($preset['security']);
+            $this->assertNotEmpty($preset['route_actions']);
+            $this->assertNotEmpty($preset['config']['assistant']['default_questions']);
+            $this->assertNotEmpty($preset['config']['models']);
+            $this->assertNotEmpty($preset['config']['retrieval']);
+            $this->assertNotEmpty($preset['config']['security']);
+        }
+
+        $store = $presets->find('store');
+
+        $this->assertArrayHasKey('App\\Models\\Product', $store['config']['models']);
+        $this->assertSame('Products', $store['config']['models']['App\\Models\\Product']['label']);
+        $this->assertArrayHasKey('products.view', $store['config']['models']['App\\Models\\Product']['route_actions']);
+    }
+
+    public function test_preset_command_lists_and_exports_json_recommendations(): void
+    {
+        config()->set('model-mind.preset', 'support');
+
+        Artisan::call('model-mind:preset', [
+            '--list' => true,
+        ]);
+
+        $listOutput = Artisan::output();
+
+        $this->assertStringContainsString('store', $listOutput);
+        $this->assertStringContainsString('support (active)', $listOutput);
+
+        Artisan::call('model-mind:preset', [
+            'preset' => 'crm',
+            '--json' => true,
+        ]);
+
+        $payload = json_decode(Artisan::output(), true);
+
+        $this->assertIsArray($payload);
+        $this->assertSame('crm', $payload['name']);
+        $this->assertSame('CRM', $payload['label']);
+        $this->assertArrayHasKey('App\\Models\\Contact', $payload['config']['models']);
+        $this->assertSame('contacts.view', $payload['config']['route_actions'][0]);
     }
 
     public function test_context_cache_can_be_cleared(): void

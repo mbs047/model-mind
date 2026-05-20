@@ -6,6 +6,7 @@ ModelMind is a secure, model-aware AI chat assistant for Laravel applications. T
 
 - [Installation](installation.md)
 - [Examples](examples.md)
+- [Presets](presets.md)
 - [OpenAI Configuration](openai.md)
 - [Blade Rendering](blade-rendering.md)
 - [Default Questions](default-questions.md)
