@@ -34,7 +34,7 @@ Try ModelMind in [Market Lane Store](https://mbs-sample.on-forge.com/), a sample
 - Safe named-route action buttons from configured Laravel routes.
 - Source citations that show the model, record, fields used, and optional record button.
 - Multilingual chat: visitors can ask and receive answers in their language, even when your stored application data is in one database language.
-- OpenAI Responses API support with package-specific API key and organization options.
+- Provider drivers for OpenAI, Anthropic, Gemini, Ollama, and custom AI gateways.
 
 ## Quick Start
 
@@ -56,6 +56,7 @@ Add your OpenAI credentials:
 ```env
 OPENAI_API_KEY=sk-your-key
 OPENAI_ORGANIZATION=org-your-organization-id
+MODEL_MIND_PROVIDER=openai
 MODEL_MIND_MODEL=gpt-5-nano
 ```
 
@@ -110,6 +111,7 @@ MODEL_MIND_WIDTH=25rem
 MODEL_MIND_OFFSET=1.25rem
 MODEL_MIND_Z_INDEX=9999
 MODEL_MIND_TABLE_PREFIX=model_mind_
+MODEL_MIND_PROVIDER=openai
 MODEL_MIND_API_ENABLED=true
 MODEL_MIND_API_PREFIX=api/model-mind
 MODEL_MIND_DEFAULT_QUESTIONS="What can you help with?|What data can you see?|How do I configure you?"
@@ -130,7 +132,7 @@ Supported widget positions are `bottom-right`, `bottom-left`, `bottom-center`, `
 
 ## Full Documentation
 
-Read the documentation index in [docs/README.md](docs/README.md). Start with [docs/examples.md](docs/examples.md) for simple and advanced copyable setups. Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, headless API mode, streaming responses, model configuration, multilingual answers, retrieval, route actions, source citations, authorization, security, learning memory, feedback, table prefixes, providers, routes, performance, and testing.
+Read the documentation index in [docs/README.md](docs/README.md). Start with [docs/examples.md](docs/examples.md) for simple and advanced copyable setups. Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, headless API mode, streaming responses, provider drivers, model configuration, multilingual answers, retrieval, route actions, source citations, authorization, security, learning memory, feedback, table prefixes, routes, performance, and testing.
 
 For starter configuration by application type, run:
 

@@ -15,6 +15,9 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - Optional streaming responses through web and headless API stream endpoints.
 - `StreamingModelMindProvider` contract for providers that can emit live answer deltas.
 - Streaming documentation for Blade, headless clients, custom providers, and production buffering.
+- Config-driven provider drivers for OpenAI, Anthropic, Gemini, Ollama, and custom provider classes.
+- Built-in Anthropic, Gemini, and Ollama provider implementations with streaming support.
+- Provider driver documentation with environment examples for each supported backend.
 
 ## v1.0.13 - 2026-05-21
 

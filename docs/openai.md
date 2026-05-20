@@ -5,6 +5,7 @@ Use the standard OpenAI environment variables:
 ```env
 OPENAI_API_KEY=sk-your-key
 OPENAI_ORGANIZATION=org-your-organization-id
+MODEL_MIND_PROVIDER=openai
 MODEL_MIND_MODEL=gpt-5-nano
 ```
 
@@ -19,6 +20,7 @@ Useful provider settings:
 
 ```env
 MODEL_MIND_PROVIDER=openai
+MODEL_MIND_OPENAI_BASE_URL=https://api.openai.com/v1
 MODEL_MIND_TIMEOUT=12
 MODEL_MIND_CONNECT_TIMEOUT=3
 MODEL_MIND_MAX_OUTPUT_TOKENS=450
@@ -35,3 +37,5 @@ MODEL_MIND_STREAMING=false
 ## Separate Credentials
 
 Use `MODEL_MIND_OPENAI_API_KEY` and `MODEL_MIND_OPENAI_ORGANIZATION` when the host app already uses OpenAI for other features and ModelMind needs isolated billing, limits, or organization routing.
+
+For Anthropic, Gemini, Ollama, or custom gateway configuration, see [Provider Drivers](provider-drivers.md).

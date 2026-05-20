@@ -18,6 +18,7 @@ use Mbs\ModelMind\Models\ModelMindSession;
 use Mbs\ModelMind\Support\Context\ContextRegistry;
 use Mbs\ModelMind\Support\Database\TableNames;
 use Mbs\ModelMind\Support\Presets\ModelMindPresetRepository;
+use Mbs\ModelMind\Tests\Fixtures\CustomProvider;
 use Mbs\ModelMind\Tests\Fixtures\FakeVectorSearcher;
 use Mbs\ModelMind\Tests\Fixtures\KnowledgeEntry;
 use Mbs\ModelMind\Tests\Fixtures\StreamingProvider;
@@ -311,6 +312,114 @@ class ModelMindPackageTest extends TestCase
             'role' => ModelMindMessage::ROLE_ASSISTANT,
             'content' => 'Streaming answer with a route.',
         ]);
+    }
+
+    public function test_anthropic_provider_driver_can_be_selected_from_config(): void
+    {
+        config()->set('model-mind.provider.default', 'anthropic');
+        config()->set('model-mind.provider.drivers.anthropic.api_key', 'anthropic-test-key');
+        config()->set('model-mind.provider.drivers.anthropic.model', 'claude-test');
+        config()->set('model-mind.provider.drivers.anthropic.base_url', 'https://anthropic.test/v1');
+        config()->set('model-mind.provider.drivers.anthropic.max_output_tokens', 500);
+
+        Http::fake([
+            'anthropic.test/v1/messages' => function (Request $request) {
+                $this->assertSame('anthropic-test-key', $request->header('x-api-key')[0] ?? null);
+                $this->assertSame('2023-06-01', $request->header('anthropic-version')[0] ?? null);
+                $this->assertSame('claude-test', $request['model']);
+                $this->assertSame(500, $request['max_tokens']);
+                $this->assertFalse($request['stream']);
+                $this->assertStringContainsString('Current visitor question', $request['messages'][0]['content']);
+
+                return Http::response([
+                    'content' => [
+                        ['type' => 'text', 'text' => 'Anthropic provider answer.'],
+                    ],
+                ]);
+            },
+        ]);
+
+        $this->postJson(route('model-mind.chat'), [
+            'question' => 'Use Anthropic',
+        ])
+            ->assertOk()
+            ->assertJsonPath('answer', 'Anthropic provider answer.');
+    }
+
+    public function test_gemini_provider_driver_can_be_selected_from_config(): void
+    {
+        config()->set('model-mind.provider.default', 'gemini');
+        config()->set('model-mind.provider.drivers.gemini.api_key', 'gemini-test-key');
+        config()->set('model-mind.provider.drivers.gemini.model', 'gemini-test');
+        config()->set('model-mind.provider.drivers.gemini.base_url', 'https://gemini.test/v1beta');
+        config()->set('model-mind.provider.drivers.gemini.max_output_tokens', 600);
+
+        Http::fake([
+            'gemini.test/*' => function (Request $request) {
+                $this->assertStringContainsString('/models/gemini-test:generateContent?key=gemini-test-key', $request->url());
+                $this->assertSame(600, $request['generationConfig']['maxOutputTokens']);
+                $this->assertStringContainsString('Current visitor question', $request['contents'][0]['parts'][0]['text']);
+
+                return Http::response([
+                    'candidates' => [[
+                        'content' => [
+                            'parts' => [
+                                ['text' => 'Gemini provider answer.'],
+                            ],
+                        ],
+                    ]],
+                ]);
+            },
+        ]);
+
+        $this->postJson(route('model-mind.chat'), [
+            'question' => 'Use Gemini',
+        ])
+            ->assertOk()
+            ->assertJsonPath('answer', 'Gemini provider answer.');
+    }
+
+    public function test_ollama_provider_driver_can_be_selected_from_config(): void
+    {
+        config()->set('model-mind.provider.default', 'ollama');
+        config()->set('model-mind.provider.drivers.ollama.model', 'llama-test');
+        config()->set('model-mind.provider.drivers.ollama.base_url', 'http://ollama.test');
+        config()->set('model-mind.provider.drivers.ollama.options', ['temperature' => 0]);
+
+        Http::fake([
+            'ollama.test/api/chat' => function (Request $request) {
+                $this->assertSame('llama-test', $request['model']);
+                $this->assertFalse($request['stream']);
+                $this->assertSame(['temperature' => 0], $request['options']);
+                $this->assertSame('system', $request['messages'][0]['role']);
+                $this->assertSame('user', $request['messages'][1]['role']);
+
+                return Http::response([
+                    'message' => [
+                        'role' => 'assistant',
+                        'content' => 'Ollama provider answer.',
+                    ],
+                ]);
+            },
+        ]);
+
+        $this->postJson(route('model-mind.chat'), [
+            'question' => 'Use Ollama',
+        ])
+            ->assertOk()
+            ->assertJsonPath('answer', 'Ollama provider answer.');
+    }
+
+    public function test_custom_provider_driver_can_be_selected_from_config(): void
+    {
+        config()->set('model-mind.provider.default', 'custom');
+        config()->set('model-mind.provider.drivers.custom.class', CustomProvider::class);
+
+        $this->postJson(route('model-mind.chat'), [
+            'question' => 'Use custom provider',
+        ])
+            ->assertOk()
+            ->assertJsonPath('answer', 'Custom provider answer.');
     }
 
     public function test_presets_expose_complete_configuration_recommendations(): void

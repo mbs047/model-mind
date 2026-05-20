@@ -29,6 +29,7 @@ Add provider credentials:
 ```env
 OPENAI_API_KEY=sk-your-key
 OPENAI_ORGANIZATION=org-your-organization-id
+MODEL_MIND_PROVIDER=openai
 MODEL_MIND_MODEL=gpt-5-nano
 ```
 
@@ -170,12 +171,30 @@ MODEL_MIND_LEARNING_CONTEXT_LIMIT=12
     'model' => env('MODEL_MIND_MODEL', 'gpt-5-nano'),
     'api_key' => env('MODEL_MIND_OPENAI_API_KEY', env('OPENAI_API_KEY')),
     'organization' => env('MODEL_MIND_OPENAI_ORGANIZATION', env('OPENAI_ORGANIZATION')),
+    'base_url' => env('MODEL_MIND_OPENAI_BASE_URL', 'https://api.openai.com/v1'),
     'timeout' => (int) env('MODEL_MIND_TIMEOUT', 12),
     'connect_timeout' => (int) env('MODEL_MIND_CONNECT_TIMEOUT', 3),
     'max_output_tokens' => (int) env('MODEL_MIND_MAX_OUTPUT_TOKENS', 450),
     'reasoning_effort' => env('MODEL_MIND_REASONING_EFFORT', 'minimal'),
     'retry_when_truncated' => false,
     'store' => false,
+    'drivers' => [
+        'anthropic' => [
+            'api_key' => env('MODEL_MIND_ANTHROPIC_API_KEY', env('ANTHROPIC_API_KEY')),
+            'model' => env('MODEL_MIND_ANTHROPIC_MODEL', 'claude-3-5-haiku-latest'),
+        ],
+        'gemini' => [
+            'api_key' => env('MODEL_MIND_GEMINI_API_KEY', env('GEMINI_API_KEY', env('GOOGLE_API_KEY'))),
+            'model' => env('MODEL_MIND_GEMINI_MODEL', 'gemini-2.0-flash'),
+        ],
+        'ollama' => [
+            'base_url' => env('MODEL_MIND_OLLAMA_BASE_URL', 'http://127.0.0.1:11434'),
+            'model' => env('MODEL_MIND_OLLAMA_MODEL', 'llama3.1'),
+        ],
+        'custom' => [
+            'class' => env('MODEL_MIND_CUSTOM_PROVIDER'),
+        ],
+    ],
 ],
 
 'routes' => [
@@ -555,6 +574,7 @@ POST /api/model-mind/stream
 - [Named Route Actions](route-actions.md)
 - [Headless API](headless-api.md)
 - [Streaming Responses](streaming.md)
+- [Provider Drivers](provider-drivers.md)
 - [Learning Memory](learning-memory.md)
 - [Sessions](sessions.md)
 - [Multilingual Answers](multilingual.md)

@@ -1,6 +1,13 @@
 # Custom AI Providers
 
-The package resolves `Mbs\ModelMind\Contracts\ModelMindProvider`. Bind your own provider in an application service provider:
+ModelMind includes built-in provider drivers for OpenAI, Anthropic, Gemini, and Ollama. Read [Provider Drivers](provider-drivers.md) when you only need to switch providers from config.
+
+The package resolves `Mbs\ModelMind\Contracts\ModelMindProvider`. For a fully custom integration, either set the `custom` driver in config or bind your own provider in an application service provider:
+
+```env
+MODEL_MIND_PROVIDER=custom
+MODEL_MIND_CUSTOM_PROVIDER=App\Support\Ai\CustomModelMindProvider
+```
 
 ```php
 use Mbs\ModelMind\Contracts\ModelMindProvider;

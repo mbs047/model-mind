@@ -5,21 +5,25 @@ namespace Mbs\ModelMind\Support\Providers;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\Http;
 use Mbs\ModelMind\Contracts\ModelMindProvider;
 use Mbs\ModelMind\Contracts\StreamingModelMindProvider;
 use Mbs\ModelMind\Data\ModelMindRequestData;
 use Mbs\ModelMind\Data\ModelMindResponseData;
 use Mbs\ModelMind\Support\PromptBuilder;
+use Mbs\ModelMind\Support\Providers\Concerns\ReadsProviderSettings;
 use RuntimeException;
 
 class OpenAiModelMindProvider implements ModelMindProvider, StreamingModelMindProvider
 {
+    use ReadsProviderSettings;
+
+    private const DRIVER = 'openai';
+
     public function __construct(private readonly PromptBuilder $promptBuilder) {}
 
     public function answer(ModelMindRequestData $request): ModelMindResponseData
     {
-        $apiKey = config('model-mind.provider.api_key');
+        $apiKey = $this->providerSetting(self::DRIVER, 'api_key');
 
         if (! is_string($apiKey) || blank($apiKey)) {
             throw new RuntimeException('The ModelMind OpenAI API key is not configured.');
@@ -31,7 +35,7 @@ class OpenAiModelMindProvider implements ModelMindProvider, StreamingModelMindPr
 
         if (
             blank($answer)
-            && (bool) config('model-mind.provider.retry_when_truncated', false)
+                && (bool) $this->providerSetting(self::DRIVER, 'retry_when_truncated', false)
             && Arr::get($responsePayload, 'incomplete_details.reason') === 'max_output_tokens'
         ) {
             $payload['max_output_tokens'] = max((int) $payload['max_output_tokens'], 1200);
@@ -53,7 +57,7 @@ class OpenAiModelMindProvider implements ModelMindProvider, StreamingModelMindPr
      */
     public function stream(ModelMindRequestData $request): iterable
     {
-        $apiKey = config('model-mind.provider.api_key');
+        $apiKey = $this->providerSetting(self::DRIVER, 'api_key');
 
         if (! is_string($apiKey) || blank($apiKey)) {
             throw new RuntimeException('The ModelMind OpenAI API key is not configured.');
@@ -64,7 +68,7 @@ class OpenAiModelMindProvider implements ModelMindProvider, StreamingModelMindPr
         try {
             $response = $this->request($apiKey)
                 ->withOptions(['stream' => true])
-                ->post('https://api.openai.com/v1/responses', $payload);
+                ->post($this->providerBaseUrl(self::DRIVER, 'https://api.openai.com/v1').'/responses', $payload);
         } catch (ConnectionException $exception) {
             throw new RuntimeException('The ModelMind provider request could not connect.', previous: $exception);
         }
@@ -123,7 +127,7 @@ class OpenAiModelMindProvider implements ModelMindProvider, StreamingModelMindPr
     private function payload(ModelMindRequestData $request, bool $stream = false): array
     {
         $payload = [
-            'model' => config('model-mind.provider.model', 'gpt-5-mini'),
+            'model' => $this->providerSetting(self::DRIVER, 'model', 'gpt-5-mini'),
             'instructions' => $request->instructions,
             'input' => [[
                 'role' => 'user',
@@ -132,15 +136,15 @@ class OpenAiModelMindProvider implements ModelMindProvider, StreamingModelMindPr
                     'text' => $this->promptBuilder->input($request->question, $request->session),
                 ]],
             ]],
-            'max_output_tokens' => (int) config('model-mind.provider.max_output_tokens', 700),
-            'store' => (bool) config('model-mind.provider.store', false),
+            'max_output_tokens' => (int) $this->providerSetting(self::DRIVER, 'max_output_tokens', 700),
+            'store' => (bool) $this->providerSetting(self::DRIVER, 'store', false),
         ];
 
         if ($stream) {
             $payload['stream'] = true;
         }
 
-        $reasoningEffort = config('model-mind.provider.reasoning_effort');
+        $reasoningEffort = $this->providerSetting(self::DRIVER, 'reasoning_effort');
 
         if (is_string($reasoningEffort) && filled($reasoningEffort)) {
             $payload['reasoning'] = ['effort' => $reasoningEffort];
@@ -156,7 +160,7 @@ class OpenAiModelMindProvider implements ModelMindProvider, StreamingModelMindPr
     private function post(string $apiKey, array $payload): array
     {
         try {
-            $response = $this->request($apiKey)->post('https://api.openai.com/v1/responses', $payload);
+            $response = $this->request($apiKey)->post($this->providerBaseUrl(self::DRIVER, 'https://api.openai.com/v1').'/responses', $payload);
         } catch (ConnectionException $exception) {
             throw new RuntimeException('The ModelMind provider request could not connect.', previous: $exception);
         }
@@ -170,12 +174,11 @@ class OpenAiModelMindProvider implements ModelMindProvider, StreamingModelMindPr
 
     private function request(string $apiKey): PendingRequest
     {
-        $request = Http::acceptJson()
+        $request = $this->providerRequest(self::DRIVER)
             ->withToken($apiKey)
-            ->connectTimeout((int) config('model-mind.provider.connect_timeout', 4))
-            ->timeout((int) config('model-mind.provider.timeout', 20));
+            ->asJson();
 
-        $organization = config('model-mind.provider.organization');
+        $organization = $this->providerSetting(self::DRIVER, 'organization');
 
         if (is_string($organization) && filled($organization)) {
             $request = $request->withHeaders(['OpenAI-Organization' => $organization]);

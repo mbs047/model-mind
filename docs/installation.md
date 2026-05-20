@@ -51,10 +51,10 @@ php artisan vendor:publish --tag=model-mind-assets
 - Laravel 11, 12, or 13.
 - A database supported by Laravel migrations.
 - Tailwind CSS in the host application for the default design.
-- An OpenAI API key when using the built-in OpenAI provider.
+- A provider credential when using a hosted provider driver such as OpenAI, Anthropic, or Gemini.
 
 ## Next Steps
 
-- Configure [OpenAI](openai.md).
+- Configure [OpenAI](openai.md) or another [Provider Driver](provider-drivers.md).
 - Render the [Blade widget](blade-rendering.md).
 - Enable [models and context](models.md).

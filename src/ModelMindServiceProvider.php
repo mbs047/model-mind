@@ -15,7 +15,7 @@ use Mbs\ModelMind\Console\Commands\LearnModelMindKnowledgeCommand;
 use Mbs\ModelMind\Console\Commands\PublishModelMindAssetsCommand;
 use Mbs\ModelMind\Console\Commands\ShowModelMindPresetCommand;
 use Mbs\ModelMind\Contracts\ModelMindProvider;
-use Mbs\ModelMind\Support\Providers\OpenAiModelMindProvider;
+use Mbs\ModelMind\Support\Providers\ModelMindProviderManager;
 use Mbs\ModelMind\Support\Views\ModelMindViewRenderer;
 
 class ModelMindServiceProvider extends ServiceProvider
@@ -24,7 +24,8 @@ class ModelMindServiceProvider extends ServiceProvider
     {
         $this->mergeConfigFrom(__DIR__.'/../config/model-mind.php', 'model-mind');
 
-        $this->app->bind(ModelMindProvider::class, OpenAiModelMindProvider::class);
+        $this->app->singleton(ModelMindProviderManager::class);
+        $this->app->bind(ModelMindProvider::class, fn (): ModelMindProvider => app(ModelMindProviderManager::class)->resolve());
         $this->app->singleton('model-mind.views', ModelMindViewRenderer::class);
     }
 

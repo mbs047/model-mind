@@ -1,5 +1,10 @@
 <?php
 
+use Mbs\ModelMind\Support\Providers\AnthropicModelMindProvider;
+use Mbs\ModelMind\Support\Providers\GeminiModelMindProvider;
+use Mbs\ModelMind\Support\Providers\OllamaModelMindProvider;
+use Mbs\ModelMind\Support\Providers\OpenAiModelMindProvider;
+
 $defaultQuestions = array_values(array_filter(array_map(
     fn (string $question): string => trim($question),
     explode('|', (string) env('MODEL_MIND_DEFAULT_QUESTIONS', 'What can you help with?|What data can you see?|How do I configure you?')),
@@ -22,15 +27,53 @@ return [
 
     'provider' => [
         'default' => env('MODEL_MIND_PROVIDER', 'openai'),
+        'custom' => env('MODEL_MIND_CUSTOM_PROVIDER'),
         'model' => env('MODEL_MIND_MODEL', env('OPENAI_MODEL', 'gpt-5-nano')),
         'api_key' => env('MODEL_MIND_OPENAI_API_KEY', env('OPENAI_API_KEY')),
         'organization' => env('MODEL_MIND_OPENAI_ORGANIZATION', env('OPENAI_ORGANIZATION')),
+        'base_url' => env('MODEL_MIND_OPENAI_BASE_URL', 'https://api.openai.com/v1'),
         'timeout' => (int) env('MODEL_MIND_TIMEOUT', 12),
         'connect_timeout' => (int) env('MODEL_MIND_CONNECT_TIMEOUT', 3),
         'max_output_tokens' => (int) env('MODEL_MIND_MAX_OUTPUT_TOKENS', 450),
         'reasoning_effort' => env('MODEL_MIND_REASONING_EFFORT', 'minimal'),
         'retry_when_truncated' => filter_var(env('MODEL_MIND_RETRY_WHEN_TRUNCATED', false), FILTER_VALIDATE_BOOL),
         'store' => filter_var(env('MODEL_MIND_STORE_RESPONSES', false), FILTER_VALIDATE_BOOL),
+        'drivers' => [
+            'openai' => [
+                'class' => OpenAiModelMindProvider::class,
+            ],
+            'anthropic' => [
+                'class' => AnthropicModelMindProvider::class,
+                'api_key' => env('MODEL_MIND_ANTHROPIC_API_KEY', env('ANTHROPIC_API_KEY')),
+                'model' => env('MODEL_MIND_ANTHROPIC_MODEL', env('ANTHROPIC_MODEL', 'claude-3-5-haiku-latest')),
+                'base_url' => env('MODEL_MIND_ANTHROPIC_BASE_URL', 'https://api.anthropic.com/v1'),
+                'version' => env('MODEL_MIND_ANTHROPIC_VERSION', '2023-06-01'),
+                'timeout' => (int) env('MODEL_MIND_ANTHROPIC_TIMEOUT', env('MODEL_MIND_TIMEOUT', 12)),
+                'connect_timeout' => (int) env('MODEL_MIND_ANTHROPIC_CONNECT_TIMEOUT', env('MODEL_MIND_CONNECT_TIMEOUT', 3)),
+                'max_output_tokens' => (int) env('MODEL_MIND_ANTHROPIC_MAX_OUTPUT_TOKENS', env('MODEL_MIND_MAX_OUTPUT_TOKENS', 450)),
+            ],
+            'gemini' => [
+                'class' => GeminiModelMindProvider::class,
+                'api_key' => env('MODEL_MIND_GEMINI_API_KEY', env('GEMINI_API_KEY', env('GOOGLE_API_KEY'))),
+                'model' => env('MODEL_MIND_GEMINI_MODEL', env('GEMINI_MODEL', 'gemini-2.0-flash')),
+                'base_url' => env('MODEL_MIND_GEMINI_BASE_URL', 'https://generativelanguage.googleapis.com/v1beta'),
+                'timeout' => (int) env('MODEL_MIND_GEMINI_TIMEOUT', env('MODEL_MIND_TIMEOUT', 12)),
+                'connect_timeout' => (int) env('MODEL_MIND_GEMINI_CONNECT_TIMEOUT', env('MODEL_MIND_CONNECT_TIMEOUT', 3)),
+                'max_output_tokens' => (int) env('MODEL_MIND_GEMINI_MAX_OUTPUT_TOKENS', env('MODEL_MIND_MAX_OUTPUT_TOKENS', 450)),
+            ],
+            'ollama' => [
+                'class' => OllamaModelMindProvider::class,
+                'model' => env('MODEL_MIND_OLLAMA_MODEL', 'llama3.1'),
+                'base_url' => env('MODEL_MIND_OLLAMA_BASE_URL', 'http://127.0.0.1:11434'),
+                'timeout' => (int) env('MODEL_MIND_OLLAMA_TIMEOUT', env('MODEL_MIND_TIMEOUT', 30)),
+                'connect_timeout' => (int) env('MODEL_MIND_OLLAMA_CONNECT_TIMEOUT', env('MODEL_MIND_CONNECT_TIMEOUT', 3)),
+                'keep_alive' => env('MODEL_MIND_OLLAMA_KEEP_ALIVE'),
+                'options' => [],
+            ],
+            'custom' => [
+                'class' => env('MODEL_MIND_CUSTOM_PROVIDER'),
+            ],
+        ],
     ],
 
     'routes' => [
