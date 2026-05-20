@@ -1,12 +1,12 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Http\Requests;
+namespace Mbs\ModelMind\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
-use Mbs\LaravelAiChat\Models\MbsAiChatMessage;
+use Mbs\ModelMind\Models\ModelMindMessage;
 
-class FeedbackMbsAiChatMessageRequest extends FormRequest
+class FeedbackModelMindMessageRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -21,8 +21,8 @@ class FeedbackMbsAiChatMessageRequest extends FormRequest
         return [
             'session_id' => ['nullable', 'uuid'],
             'feedback' => ['required', Rule::in([
-                MbsAiChatMessage::FEEDBACK_LIKED,
-                MbsAiChatMessage::FEEDBACK_DISLIKED,
+                ModelMindMessage::FEEDBACK_LIKED,
+                ModelMindMessage::FEEDBACK_DISLIKED,
             ])],
             'note' => ['nullable', 'string', 'max:1000'],
         ];

@@ -1,10 +1,10 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Support\Context;
+namespace Mbs\ModelMind\Support\Context;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Schema;
-use Mbs\LaravelAiChat\Concerns\HasAiChatContext;
+use Mbs\ModelMind\Concerns\HasModelMindContext;
 
 class ModelContextDiscoverer
 {
@@ -50,11 +50,11 @@ class ModelContextDiscoverer
      */
     private function traitColumns(Model $model): array|string|null
     {
-        if (! in_array(HasAiChatContext::class, class_uses_recursive($model), true)) {
+        if (! in_array(HasModelMindContext::class, class_uses_recursive($model), true)) {
             return null;
         }
 
-        return $model->aiChatContextColumns();
+        return $model->modelMindContextColumns();
     }
 
     /**
@@ -62,10 +62,10 @@ class ModelContextDiscoverer
      */
     private function traitHiddenColumns(Model $model): array
     {
-        if (! in_array(HasAiChatContext::class, class_uses_recursive($model), true)) {
+        if (! in_array(HasModelMindContext::class, class_uses_recursive($model), true)) {
             return [];
         }
 
-        return $model->aiChatHiddenColumns();
+        return $model->modelMindHiddenColumns();
     }
 }

@@ -1,9 +1,9 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Support\Context;
+namespace Mbs\ModelMind\Support\Context;
 
 use Illuminate\Support\Facades\Cache;
-use Mbs\LaravelAiChat\Contracts\AiChatContextProvider;
+use Mbs\ModelMind\Contracts\ModelMindContextProvider;
 
 class ContextRegistry
 {
@@ -14,13 +14,13 @@ class ContextRegistry
      */
     public function context(): array
     {
-        $seconds = (int) config('mbs-ai-chat.memory.context_cache_seconds', 300);
+        $seconds = (int) config('model-mind.memory.context_cache_seconds', 300);
 
         if ($seconds <= 0) {
             return $this->uncachedContext();
         }
 
-        return Cache::remember('mbs-ai-chat.context.v1', $seconds, fn (): array => $this->uncachedContext());
+        return Cache::remember('model-mind.context.v1', $seconds, fn (): array => $this->uncachedContext());
     }
 
     public function toPrompt(): string
@@ -28,7 +28,7 @@ class ContextRegistry
         $encoded = json_encode($this->context(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         return str($encoded ?: '{}')
-            ->limit((int) config('mbs-ai-chat.security.max_context_characters', 24000), '')
+            ->limit((int) config('model-mind.security.max_context_characters', 24000), '')
             ->toString();
     }
 
@@ -38,7 +38,7 @@ class ContextRegistry
     private function uncachedContext(): array
     {
         return [
-            'source_policy' => config('mbs-ai-chat.prompt.source_policy'),
+            'source_policy' => config('model-mind.prompt.source_policy'),
             'configured_context' => $this->configuredContext(),
             'models' => $this->modelContexts(),
             'providers' => $this->providerContexts(),
@@ -50,7 +50,7 @@ class ContextRegistry
      */
     private function configuredContext(): array
     {
-        $context = config('mbs-ai-chat.context', []);
+        $context = config('model-mind.context', []);
 
         return is_array($context) ? $context : [];
     }
@@ -60,7 +60,7 @@ class ContextRegistry
      */
     private function modelContexts(): array
     {
-        $models = config('mbs-ai-chat.models', []);
+        $models = config('model-mind.models', []);
 
         if (! is_array($models)) {
             return [];
@@ -89,7 +89,7 @@ class ContextRegistry
      */
     private function providerContexts(): array
     {
-        return collect(config('mbs-ai-chat.context_providers', []))
+        return collect(config('model-mind.context_providers', []))
             ->map(function (mixed $provider): array {
                 if (! is_string($provider) || ! class_exists($provider)) {
                     return [];
@@ -97,7 +97,7 @@ class ContextRegistry
 
                 $instance = app($provider);
 
-                return $instance instanceof AiChatContextProvider
+                return $instance instanceof ModelMindContextProvider
                     ? $instance->context()
                     : [];
             })

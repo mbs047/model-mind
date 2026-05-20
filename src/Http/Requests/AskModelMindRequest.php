@@ -1,10 +1,10 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Http\Requests;
+namespace Mbs\ModelMind\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class AskMbsAiChatRequest extends FormRequest
+class AskModelMindRequest extends FormRequest
 {
     public function authorize(): bool
     {

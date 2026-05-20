@@ -1,30 +1,30 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Support\Providers;
+namespace Mbs\ModelMind\Support\Providers;
 
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
-use Mbs\LaravelAiChat\Contracts\AiChatProvider;
-use Mbs\LaravelAiChat\Data\ChatRequestData;
-use Mbs\LaravelAiChat\Data\ChatResponseData;
-use Mbs\LaravelAiChat\Support\PromptBuilder;
+use Mbs\ModelMind\Contracts\ModelMindProvider;
+use Mbs\ModelMind\Data\ModelMindRequestData;
+use Mbs\ModelMind\Data\ModelMindResponseData;
+use Mbs\ModelMind\Support\PromptBuilder;
 use RuntimeException;
 
-class OpenAiChatProvider implements AiChatProvider
+class OpenAiModelMindProvider implements ModelMindProvider
 {
     public function __construct(private readonly PromptBuilder $promptBuilder) {}
 
-    public function answer(ChatRequestData $request): ChatResponseData
+    public function answer(ModelMindRequestData $request): ModelMindResponseData
     {
-        $apiKey = config('mbs-ai-chat.provider.api_key');
+        $apiKey = config('model-mind.provider.api_key');
 
         if (! is_string($apiKey) || blank($apiKey)) {
-            throw new RuntimeException('The MBS AI Chat OpenAI API key is not configured.');
+            throw new RuntimeException('The ModelMind OpenAI API key is not configured.');
         }
 
         $payload = [
-            'model' => config('mbs-ai-chat.provider.model', 'gpt-5-mini'),
+            'model' => config('model-mind.provider.model', 'gpt-5-mini'),
             'instructions' => $request->instructions,
             'input' => [[
                 'role' => 'user',
@@ -33,11 +33,11 @@ class OpenAiChatProvider implements AiChatProvider
                     'text' => $this->promptBuilder->input($request->question, $request->session),
                 ]],
             ]],
-            'max_output_tokens' => (int) config('mbs-ai-chat.provider.max_output_tokens', 700),
-            'store' => (bool) config('mbs-ai-chat.provider.store', false),
+            'max_output_tokens' => (int) config('model-mind.provider.max_output_tokens', 700),
+            'store' => (bool) config('model-mind.provider.store', false),
         ];
 
-        $reasoningEffort = config('mbs-ai-chat.provider.reasoning_effort');
+        $reasoningEffort = config('model-mind.provider.reasoning_effort');
 
         if (is_string($reasoningEffort) && filled($reasoningEffort)) {
             $payload['reasoning'] = ['effort' => $reasoningEffort];
@@ -53,10 +53,10 @@ class OpenAiChatProvider implements AiChatProvider
         }
 
         if (blank($answer)) {
-            throw new RuntimeException('The MBS AI Chat provider response did not include text.');
+            throw new RuntimeException('The ModelMind provider response did not include text.');
         }
 
-        return new ChatResponseData(trim($answer), [
+        return new ModelMindResponseData(trim($answer), [
             'model' => $payload['model'],
         ]);
     }
@@ -70,10 +70,10 @@ class OpenAiChatProvider implements AiChatProvider
         try {
             $request = Http::acceptJson()
                 ->withToken($apiKey)
-                ->connectTimeout((int) config('mbs-ai-chat.provider.connect_timeout', 4))
-                ->timeout((int) config('mbs-ai-chat.provider.timeout', 20));
+                ->connectTimeout((int) config('model-mind.provider.connect_timeout', 4))
+                ->timeout((int) config('model-mind.provider.timeout', 20));
 
-            $organization = config('mbs-ai-chat.provider.organization');
+            $organization = config('model-mind.provider.organization');
 
             if (is_string($organization) && filled($organization)) {
                 $request = $request->withHeaders(['OpenAI-Organization' => $organization]);
@@ -81,11 +81,11 @@ class OpenAiChatProvider implements AiChatProvider
 
             $response = $request->post('https://api.openai.com/v1/responses', $payload);
         } catch (ConnectionException $exception) {
-            throw new RuntimeException('The MBS AI Chat provider request could not connect.', previous: $exception);
+            throw new RuntimeException('The ModelMind provider request could not connect.', previous: $exception);
         }
 
         if ($response->failed()) {
-            throw new RuntimeException('The MBS AI Chat provider request failed.');
+            throw new RuntimeException('The ModelMind provider request failed.');
         }
 
         return $response->json() ?? [];

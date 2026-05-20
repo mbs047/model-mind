@@ -1,10 +1,10 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Support;
+namespace Mbs\ModelMind\Support;
 
-use Mbs\LaravelAiChat\Models\MbsAiChatMessage;
-use Mbs\LaravelAiChat\Models\MbsAiChatSession;
-use Mbs\LaravelAiChat\Support\Context\ContextRegistry;
+use Mbs\ModelMind\Models\ModelMindMessage;
+use Mbs\ModelMind\Models\ModelMindSession;
+use Mbs\ModelMind\Support\Context\ContextRegistry;
 
 class PromptBuilder
 {
@@ -12,14 +12,14 @@ class PromptBuilder
 
     public function instructions(): string
     {
-        $assistantName = $this->stringConfig('mbs-ai-chat.assistant.name', 'MBS Assistant');
-        $fallbackAnswer = $this->stringConfig('mbs-ai-chat.assistant.fallback_answer', 'I do not have that information in the enabled application context yet.');
-        $toneInstructions = $this->stringConfig('mbs-ai-chat.assistant.tone_instructions', 'Use a clear, concise, helpful professional tone.');
-        $languageInstructions = $this->stringConfig('mbs-ai-chat.assistant.language_instructions', 'Answer in the same language as the visitor.');
-        $extraInstructions = $this->stringConfig('mbs-ai-chat.prompt.extra_instructions', '');
+        $assistantName = $this->stringConfig('model-mind.assistant.name', 'ModelMind');
+        $fallbackAnswer = $this->stringConfig('model-mind.assistant.fallback_answer', 'I do not have that information in the enabled application context yet.');
+        $toneInstructions = $this->stringConfig('model-mind.assistant.tone_instructions', 'Use a clear, concise, helpful professional tone.');
+        $languageInstructions = $this->stringConfig('model-mind.assistant.language_instructions', 'Answer in the same language as the visitor.');
+        $extraInstructions = $this->stringConfig('model-mind.prompt.extra_instructions', '');
 
         return sprintf(<<<'PROMPT'
-You are %s, the branded MBS AI chat assistant installed in this Laravel application.
+You are %s, the ModelMind assistant installed in this Laravel application.
 
 Rules:
 - Answer only from the enabled application context below.
@@ -38,22 +38,22 @@ ENABLED APPLICATION CONTEXT:
 PROMPT, $assistantName, $fallbackAnswer, $toneInstructions, $languageInstructions, $extraInstructions, $this->contextRegistry->toPrompt());
     }
 
-    public function input(string $question, MbsAiChatSession $session): string
+    public function input(string $question, ModelMindSession $session): string
     {
-        $messageLimit = (int) config('mbs-ai-chat.memory.message_characters', 1200);
+        $messageLimit = (int) config('model-mind.memory.message_characters', 1200);
         $recentMessages = $session->recentMessagesForPrompt();
         $latestMessage = $recentMessages->last();
 
         if (
-            $latestMessage instanceof MbsAiChatMessage
-            && $latestMessage->role === MbsAiChatMessage::ROLE_USER
+            $latestMessage instanceof ModelMindMessage
+            && $latestMessage->role === ModelMindMessage::ROLE_USER
             && str($latestMessage->content)->squish()->toString() === str($question)->squish()->toString()
         ) {
             $recentMessages = $recentMessages->slice(0, -1);
         }
 
         $conversation = $recentMessages
-            ->map(fn (MbsAiChatMessage $message): string => sprintf(
+            ->map(fn (ModelMindMessage $message): string => sprintf(
                 '%s%s: %s',
                 $message->isAssistant() ? 'Assistant' : 'Visitor',
                 $message->feedback ? " ({$message->feedback})" : '',
@@ -62,7 +62,7 @@ PROMPT, $assistantName, $fallbackAnswer, $toneInstructions, $languageInstruction
             ->implode("\n");
 
         $summary = str($session->conversation_summary ?? '')->squish()->limit(
-            (int) config('mbs-ai-chat.memory.summary_characters', 3000),
+            (int) config('model-mind.memory.summary_characters', 3000),
             '',
         )->toString();
 

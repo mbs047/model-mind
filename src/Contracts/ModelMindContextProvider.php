@@ -1,8 +1,8 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Contracts;
+namespace Mbs\ModelMind\Contracts;
 
-interface AiChatContextProvider
+interface ModelMindContextProvider
 {
     /**
      * @return array<string, mixed>

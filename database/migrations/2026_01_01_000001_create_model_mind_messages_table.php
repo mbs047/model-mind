@@ -8,9 +8,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('mbs_ai_chat_messages', function (Blueprint $table): void {
+        Schema::create('model_mind_messages', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('mbs_ai_chat_session_id');
+            $table->foreignId('model_mind_session_id');
             $table->uuid('uuid')->unique();
             $table->string('role')->index();
             $table->longText('content');
@@ -20,16 +20,16 @@ return new class extends Migration
             $table->timestamp('feedback_at')->nullable();
             $table->timestamps();
 
-            $table->index(['mbs_ai_chat_session_id', 'created_at'], 'mbs_ai_chat_messages_session_created_index');
-            $table->foreign('mbs_ai_chat_session_id', 'mbs_ai_chat_messages_session_fk')
+            $table->index(['model_mind_session_id', 'created_at'], 'model_mind_messages_session_created_index');
+            $table->foreign('model_mind_session_id', 'model_mind_messages_session_fk')
                 ->references('id')
-                ->on('mbs_ai_chat_sessions')
+                ->on('model_mind_sessions')
                 ->cascadeOnDelete();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('mbs_ai_chat_messages');
+        Schema::dropIfExists('model_mind_messages');
     }
 };

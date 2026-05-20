@@ -1,8 +1,8 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Contracts;
+namespace Mbs\ModelMind\Contracts;
 
-interface AiChatActionResolver
+interface ModelMindActionResolver
 {
     /**
      * @return array{label: string, url: string, kind: string}|null

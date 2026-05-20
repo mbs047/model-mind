@@ -1,6 +1,6 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Support\Actions;
+namespace Mbs\ModelMind\Support\Actions;
 
 class ActionExtractor
 {
@@ -107,6 +107,6 @@ class ActionExtractor
 
         return filled($cleaned)
             ? $cleaned
-            : (string) config('mbs-ai-chat.assistant.fallback_answer', 'I do not have that information in the enabled application context yet.');
+            : (string) config('model-mind.assistant.fallback_answer', 'I do not have that information in the enabled application context yet.');
     }
 }

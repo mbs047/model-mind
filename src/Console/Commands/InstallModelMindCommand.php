@@ -1,29 +1,29 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Console\Commands;
+namespace Mbs\ModelMind\Console\Commands;
 
 use Illuminate\Console\Command;
 
-class InstallMbsAiChatCommand extends Command
+class InstallModelMindCommand extends Command
 {
-    protected $signature = 'mbs-ai-chat:install
+    protected $signature = 'model-mind:install
         {--views : Publish the customizable Blade views}
         {--force : Overwrite previously published files}
         {--dry-run : Show the publish steps without writing files}';
 
-    protected $description = 'Publish the MBS Laravel AI Chat configuration and migrations.';
+    protected $description = 'Publish the ModelMind configuration and migrations.';
 
     public function handle(): int
     {
         $force = (bool) $this->option('force');
         $dryRun = (bool) $this->option('dry-run');
         $tags = [
-            'mbs-ai-chat-config',
-            'mbs-ai-chat-migrations',
+            'model-mind-config',
+            'model-mind-migrations',
         ];
 
         if ($this->option('views')) {
-            $tags[] = 'mbs-ai-chat-views';
+            $tags[] = 'model-mind-views';
         }
 
         foreach ($tags as $tag) {
@@ -48,8 +48,8 @@ class InstallMbsAiChatCommand extends Command
         }
 
         $this->newLine();
-        $this->info('MBS Laravel AI Chat is installed.');
-        $this->line('Next: configure config/mbs-ai-chat.php, add allowed models, then run php artisan migrate.');
+        $this->info('ModelMind is installed.');
+        $this->line('Next: configure config/model-mind.php, add allowed models, then run php artisan migrate.');
 
         return self::SUCCESS;
     }

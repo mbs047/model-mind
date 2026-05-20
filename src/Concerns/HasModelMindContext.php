@@ -1,17 +1,17 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Concerns;
+namespace Mbs\ModelMind\Concerns;
 
 use Illuminate\Database\Eloquent\Builder;
 
-trait HasAiChatContext
+trait HasModelMindContext
 {
-    public function aiChatLabel(): string
+    public function modelMindLabel(): string
     {
         return class_basename($this);
     }
 
-    public function aiChatDescription(): ?string
+    public function modelMindDescription(): ?string
     {
         return null;
     }
@@ -19,7 +19,7 @@ trait HasAiChatContext
     /**
      * @return array<int, string>|string
      */
-    public function aiChatContextColumns(): array|string
+    public function modelMindContextColumns(): array|string
     {
         return 'auto';
     }
@@ -27,7 +27,7 @@ trait HasAiChatContext
     /**
      * @return array<int, string>
      */
-    public function aiChatHiddenColumns(): array
+    public function modelMindHiddenColumns(): array
     {
         return [];
     }
@@ -35,7 +35,7 @@ trait HasAiChatContext
     /**
      * @return array<int, string>
      */
-    public function aiChatContextRelations(): array
+    public function modelMindContextRelations(): array
     {
         return [];
     }
@@ -44,7 +44,7 @@ trait HasAiChatContext
      * @param  Builder<static>  $query
      * @return Builder<static>
      */
-    public function aiChatContextQuery(Builder $query): Builder
+    public function modelMindContextQuery(Builder $query): Builder
     {
         return $query;
     }
@@ -52,7 +52,7 @@ trait HasAiChatContext
     /**
      * @return array<string, mixed>
      */
-    public function toAiChatContext(): array
+    public function toModelMindContext(): array
     {
         return [];
     }

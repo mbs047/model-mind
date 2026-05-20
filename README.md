@@ -1,17 +1,17 @@
-# MBS Laravel AI Chat
+# ModelMind
 
 A secure, configurable, model-aware AI chat assistant for Laravel applications.
 
-MBS Laravel AI Chat adds a reusable Blade/Tailwind chat modal, persisted conversation memory, configurable Eloquent model context, safe column auto-discovery, per-model overrides, and an OpenAI Responses API provider behind an interface.
+ModelMind adds a reusable Blade/Tailwind chat modal, persisted conversation memory, configurable Eloquent model context, safe column auto-discovery, per-model overrides, and an OpenAI Responses API provider behind an interface.
 
 ## Features
 
-- Branded `MBS Assistant` chat modal for Laravel Blade apps.
-- Blade directives: `@mbsChat`, `@mbsChatModal`, `@mbsChatScripts`, `@mbsChatStyles`.
-- Anonymous Blade components such as `<x-mbs-ai-chat::modal />`.
+- Branded `ModelMind` chat modal for Laravel Blade apps.
+- Blade directives: `@modelMind`, `@modelMindModal`, `@modelMindScripts`, `@modelMindStyles`.
+- Anonymous Blade components such as `<x-model-mind::modal />`.
 - Persisted chat sessions, messages, server history restore, and feedback.
 - Config-driven Eloquent model context.
-- `HasAiChatContext` trait for per-model labels, query scopes, hidden columns, and custom context output.
+- `HasModelMindContext` trait for per-model labels, query scopes, hidden columns, and custom context output.
 - Sensitive-column filtering for passwords, tokens, secrets, private keys, recovery codes, and similar fields.
 - Context inspection command before production use.
 - Publishable config, migrations, and views.
@@ -19,11 +19,13 @@ MBS Laravel AI Chat adds a reusable Blade/Tailwind chat modal, persisted convers
 ## Installation
 
 ```bash
-composer require mbs/laravel-ai-chat
+composer require mbs047/model-mind
 
-php artisan mbs-ai-chat:install
+php artisan model-mind:install
 php artisan migrate
 ```
+
+By default, the modal ships with the `MBS` brand mark. Override it per app with `MODEL_MIND_BRAND_MARK`.
 
 If installing directly from GitHub before Packagist registration, add a Composer repository:
 
@@ -32,7 +34,7 @@ If installing directly from GitHub before Packagist registration, add a Composer
     "repositories": [
         {
             "type": "vcs",
-            "url": "https://github.com/mbs047/mbs-laravel-ai-chat"
+            "url": "https://github.com/mbs047/model-mind"
         }
     ]
 }
@@ -43,15 +45,15 @@ If installing directly from GitHub before Packagist registration, add a Composer
 Add the modal and scripts to a Blade layout:
 
 ```blade
-@mbsChatStyles
-@mbsChatModal
-@mbsChatScripts
+@modelMindStyles
+@modelMindModal
+@modelMindScripts
 ```
 
 Or render everything at once:
 
 ```blade
-@mbsChat
+@modelMind
 ```
 
 ## Configure Models
@@ -80,23 +82,23 @@ Use the trait when a model needs package-specific behavior.
 
 ```php
 use Illuminate\Database\Eloquent\Builder;
-use Mbs\LaravelAiChat\Concerns\HasAiChatContext;
+use Mbs\ModelMind\Concerns\HasModelMindContext;
 
 class Product extends Model
 {
-    use HasAiChatContext;
+    use HasModelMindContext;
 
-    public function aiChatLabel(): string
+    public function modelMindLabel(): string
     {
         return 'Products';
     }
 
-    public function aiChatHiddenColumns(): array
+    public function modelMindHiddenColumns(): array
     {
         return ['cost', 'internal_notes'];
     }
 
-    public function aiChatContextQuery(Builder $query): Builder
+    public function modelMindContextQuery(Builder $query): Builder
     {
         return $query->where('is_public', true);
     }
@@ -108,8 +110,8 @@ class Product extends Model
 Before enabling a model in production, inspect the exact context that can be sent to the provider:
 
 ```bash
-php artisan mbs-ai-chat:inspect-context
-php artisan mbs-ai-chat:inspect-context --json
+php artisan model-mind:inspect-context
+php artisan model-mind:inspect-context --json
 ```
 
 ## Security Model
@@ -122,4 +124,4 @@ The package is explicit by design:
 - It strips HTML from context values by default.
 - It treats database content as data, not instructions.
 
-Review `config/mbs-ai-chat.php` before production use.
+Review `config/model-mind.php` before production use.

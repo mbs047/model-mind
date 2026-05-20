@@ -1,8 +1,8 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Data;
+namespace Mbs\ModelMind\Data;
 
-class ChatResponseData
+class ModelMindResponseData
 {
     /**
      * @param  array<string, mixed>  $metadata

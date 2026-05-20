@@ -8,7 +8,7 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('mbs_ai_chat_sessions', function (Blueprint $table): void {
+        Schema::create('model_mind_sessions', function (Blueprint $table): void {
             $table->id();
             $table->uuid('uuid')->unique();
             $table->longText('conversation_summary')->nullable();
@@ -24,6 +24,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('mbs_ai_chat_sessions');
+        Schema::dropIfExists('model_mind_sessions');
     }
 };

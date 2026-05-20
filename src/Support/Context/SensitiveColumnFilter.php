@@ -1,6 +1,6 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Support\Context;
+namespace Mbs\ModelMind\Support\Context;
 
 class SensitiveColumnFilter
 {
@@ -18,17 +18,17 @@ class SensitiveColumnFilter
             return true;
         }
 
-        if (in_array($column, (array) config('mbs-ai-chat.security.blocked_columns', []), true)) {
+        if (in_array($column, (array) config('model-mind.security.blocked_columns', []), true)) {
             return false;
         }
 
-        foreach ((array) config('mbs-ai-chat.security.blocked_patterns', []) as $pattern) {
+        foreach ((array) config('model-mind.security.blocked_patterns', []) as $pattern) {
             if (@preg_match($pattern, $column) === 1) {
                 return false;
             }
         }
 
-        if ($cast && in_array($cast, (array) config('mbs-ai-chat.security.blocked_casts', []), true)) {
+        if ($cast && in_array($cast, (array) config('model-mind.security.blocked_casts', []), true)) {
             return false;
         }
 

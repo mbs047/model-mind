@@ -1,6 +1,6 @@
 {
-    "name": "mbs/laravel-ai-chat",
-    "description": "MBS Laravel AI Chat: a secure, configurable, model-aware AI chat assistant for Laravel applications.",
+    "name": "mbs047/model-mind",
+    "description": "ModelMind: a secure, configurable, model-aware AI chat assistant for Laravel applications.",
     "type": "library",
     "license": "MIT",
     "keywords": [
@@ -21,13 +21,13 @@
     ],
     "autoload": {
         "psr-4": {
-            "Mbs\\LaravelAiChat\\": "src/"
+            "Mbs\\ModelMind\\": "src/"
         }
     },
     "extra": {
         "laravel": {
             "providers": [
-                "Mbs\\LaravelAiChat\\MbsAiChatServiceProvider"
+                "Mbs\\ModelMind\\ModelMindServiceProvider"
             ]
         }
     },

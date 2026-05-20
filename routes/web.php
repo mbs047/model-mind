@@ -1,8 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Mbs\LaravelAiChat\Http\Controllers\MbsAiChatController;
+use Mbs\ModelMind\Http\Controllers\ModelMindController;
 
-Route::post('/chat', [MbsAiChatController::class, 'chat'])->name('chat');
-Route::get('/session', [MbsAiChatController::class, 'session'])->name('session');
-Route::post('/messages/{message}/feedback', [MbsAiChatController::class, 'feedback'])->name('messages.feedback');
+Route::post('/chat', [ModelMindController::class, 'chat'])->name('chat');
+Route::get('/session', [ModelMindController::class, 'session'])->name('session');
+Route::post('/messages/{message}/feedback', [ModelMindController::class, 'feedback'])->name('messages.feedback');

@@ -1,12 +1,12 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Models;
+namespace Mbs\ModelMind\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
-class MbsAiChatMessage extends Model
+class ModelMindMessage extends Model
 {
     public const ROLE_USER = 'user';
 
@@ -16,10 +16,10 @@ class MbsAiChatMessage extends Model
 
     public const FEEDBACK_DISLIKED = 'disliked';
 
-    protected $table = 'mbs_ai_chat_messages';
+    protected $table = 'model_mind_messages';
 
     protected $fillable = [
-        'mbs_ai_chat_session_id',
+        'model_mind_session_id',
         'uuid',
         'role',
         'content',
@@ -31,7 +31,7 @@ class MbsAiChatMessage extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (MbsAiChatMessage $message): void {
+        static::creating(function (ModelMindMessage $message): void {
             $message->uuid ??= (string) Str::uuid();
         });
     }
@@ -51,7 +51,7 @@ class MbsAiChatMessage extends Model
 
     public function session(): BelongsTo
     {
-        return $this->belongsTo(MbsAiChatSession::class, 'mbs_ai_chat_session_id');
+        return $this->belongsTo(ModelMindSession::class, 'model_mind_session_id');
     }
 
     public function isAssistant(): bool

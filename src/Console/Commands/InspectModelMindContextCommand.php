@@ -1,17 +1,17 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Console\Commands;
+namespace Mbs\ModelMind\Console\Commands;
 
 use Illuminate\Console\Command;
-use Mbs\LaravelAiChat\Support\Context\ContextRegistry;
+use Mbs\ModelMind\Support\Context\ContextRegistry;
 
-class InspectMbsAiChatContextCommand extends Command
+class InspectModelMindContextCommand extends Command
 {
-    protected $signature = 'mbs-ai-chat:inspect-context
+    protected $signature = 'model-mind:inspect-context
         {--json : Output the context as JSON}
         {--no-redact : Do not redact suspicious keys from custom providers}';
 
-    protected $description = 'Inspect the safe context MBS AI Chat will send to the provider.';
+    protected $description = 'Inspect the safe context ModelMind will send to the provider.';
 
     public function handle(ContextRegistry $contextRegistry): int
     {
@@ -24,7 +24,7 @@ class InspectMbsAiChatContextCommand extends Command
         $json = json_encode($context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
         if (! is_string($json)) {
-            $this->error('Unable to encode the MBS AI Chat context.');
+            $this->error('Unable to encode the ModelMind context.');
 
             return self::FAILURE;
         }
@@ -37,7 +37,7 @@ class InspectMbsAiChatContextCommand extends Command
 
         $models = collect($context['models'] ?? []);
 
-        $this->info('MBS AI Chat context inspection');
+        $this->info('ModelMind context inspection');
         $this->line('Configured model contexts: '.$models->count());
         $models->each(function (array $model): void {
             $this->line(sprintf(
@@ -71,11 +71,11 @@ class InspectMbsAiChatContextCommand extends Command
 
     private function isSensitiveKey(string $key): bool
     {
-        if (in_array($key, (array) config('mbs-ai-chat.security.blocked_columns', []), true)) {
+        if (in_array($key, (array) config('model-mind.security.blocked_columns', []), true)) {
             return true;
         }
 
-        foreach ((array) config('mbs-ai-chat.security.blocked_patterns', []) as $pattern) {
+        foreach ((array) config('model-mind.security.blocked_patterns', []) as $pattern) {
             if (@preg_match($pattern, $key) === 1) {
                 return true;
             }

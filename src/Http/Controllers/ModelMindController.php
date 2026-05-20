@@ -1,26 +1,26 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Http\Controllers;
+namespace Mbs\ModelMind\Http\Controllers;
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Str;
-use Mbs\LaravelAiChat\Contracts\AiChatProvider;
-use Mbs\LaravelAiChat\Data\ChatRequestData;
-use Mbs\LaravelAiChat\Http\Requests\AskMbsAiChatRequest;
-use Mbs\LaravelAiChat\Http\Requests\FeedbackMbsAiChatMessageRequest;
-use Mbs\LaravelAiChat\Models\MbsAiChatMessage;
-use Mbs\LaravelAiChat\Models\MbsAiChatSession;
-use Mbs\LaravelAiChat\Support\Actions\ActionExtractor;
-use Mbs\LaravelAiChat\Support\PromptBuilder;
+use Mbs\ModelMind\Contracts\ModelMindProvider;
+use Mbs\ModelMind\Data\ModelMindRequestData;
+use Mbs\ModelMind\Http\Requests\AskModelMindRequest;
+use Mbs\ModelMind\Http\Requests\FeedbackModelMindMessageRequest;
+use Mbs\ModelMind\Models\ModelMindMessage;
+use Mbs\ModelMind\Models\ModelMindSession;
+use Mbs\ModelMind\Support\Actions\ActionExtractor;
+use Mbs\ModelMind\Support\PromptBuilder;
 use RuntimeException;
 
-class MbsAiChatController extends Controller
+class ModelMindController extends Controller
 {
     public function chat(
-        AskMbsAiChatRequest $request,
-        AiChatProvider $provider,
+        AskModelMindRequest $request,
+        ModelMindProvider $provider,
         PromptBuilder $promptBuilder,
         ActionExtractor $actions,
     ): JsonResponse {
@@ -29,13 +29,13 @@ class MbsAiChatController extends Controller
 
         $question = $request->string('question')->squish()->toString();
         $userMessage = $session->messages()->create([
-            'role' => MbsAiChatMessage::ROLE_USER,
+            'role' => ModelMindMessage::ROLE_USER,
             'content' => $question,
         ]);
         $session->compactForPrompt();
 
         try {
-            $response = $provider->answer(new ChatRequestData(
+            $response = $provider->answer(new ModelMindRequestData(
                 question: $question,
                 instructions: $promptBuilder->instructions(),
                 session: $session,
@@ -45,14 +45,14 @@ class MbsAiChatController extends Controller
             $session->compactForPrompt();
 
             return response()->json([
-                'message' => 'MBS Assistant is unavailable right now. Please try again soon.',
+                'message' => 'ModelMind is unavailable right now. Please try again soon.',
                 'session_id' => $session->uuid,
             ], 503);
         }
 
         $prepared = $actions->prepare($response->answer);
         $assistantMessage = $session->messages()->create([
-            'role' => MbsAiChatMessage::ROLE_ASSISTANT,
+            'role' => ModelMindMessage::ROLE_ASSISTANT,
             'content' => $prepared['answer'],
             'metadata' => [
                 ...$response->metadata,
@@ -87,7 +87,7 @@ class MbsAiChatController extends Controller
         $messages = $session->messages()
             ->reorder()
             ->latest('id')
-            ->limit((int) config('mbs-ai-chat.memory.browser_messages', 60))
+            ->limit((int) config('model-mind.memory.browser_messages', 60))
             ->get()
             ->reverse()
             ->values();
@@ -95,14 +95,14 @@ class MbsAiChatController extends Controller
         return response()->json([
             'session_id' => $session->uuid,
             'messages' => $messages
-                ->map(fn (MbsAiChatMessage $message): array => $this->messagePayload($message))
+                ->map(fn (ModelMindMessage $message): array => $this->messagePayload($message))
                 ->all(),
         ]);
     }
 
-    public function feedback(FeedbackMbsAiChatMessageRequest $request, string $message): JsonResponse
+    public function feedback(FeedbackModelMindMessageRequest $request, string $message): JsonResponse
     {
-        $assistantMessage = MbsAiChatMessage::query()
+        $assistantMessage = ModelMindMessage::query()
             ->where('uuid', $message)
             ->firstOrFail();
         $sessionId = $request->validated('session_id');
@@ -124,13 +124,13 @@ class MbsAiChatController extends Controller
         ]);
     }
 
-    private function resolveSessionFromUuid(?string $uuid, Request $request): MbsAiChatSession
+    private function resolveSessionFromUuid(?string $uuid, Request $request): ModelMindSession
     {
         $uuid = $this->normalizeUuid($uuid)
             ?? $this->sessionUuidFromRequest($request)
             ?? (string) Str::uuid();
 
-        $session = MbsAiChatSession::query()->firstOrCreate(
+        $session = ModelMindSession::query()->firstOrCreate(
             ['uuid' => $uuid],
             [
                 'ip_address' => $request->ip(),
@@ -144,7 +144,7 @@ class MbsAiChatController extends Controller
         return $session;
     }
 
-    private function resolveExistingSession(?string $uuid): ?MbsAiChatSession
+    private function resolveExistingSession(?string $uuid): ?ModelMindSession
     {
         $uuid = $this->normalizeUuid($uuid);
 
@@ -152,10 +152,10 @@ class MbsAiChatController extends Controller
             return null;
         }
 
-        return MbsAiChatSession::query()->where('uuid', $uuid)->first();
+        return ModelMindSession::query()->where('uuid', $uuid)->first();
     }
 
-    private function resolveSessionFromRequestSession(Request $request): ?MbsAiChatSession
+    private function resolveSessionFromRequestSession(Request $request): ?ModelMindSession
     {
         return $this->resolveExistingSession($this->sessionUuidFromRequest($request));
     }
@@ -166,13 +166,13 @@ class MbsAiChatController extends Controller
             return null;
         }
 
-        return $this->normalizeUuid($request->session()->get('mbs_ai_chat.session_id'));
+        return $this->normalizeUuid($request->session()->get('model_mind.session_id'));
     }
 
-    private function rememberSession(Request $request, MbsAiChatSession $session): void
+    private function rememberSession(Request $request, ModelMindSession $session): void
     {
         if ($request->hasSession()) {
-            $request->session()->put('mbs_ai_chat.session_id', $session->uuid);
+            $request->session()->put('model_mind.session_id', $session->uuid);
         }
     }
 
@@ -192,7 +192,7 @@ class MbsAiChatController extends Controller
     /**
      * @return array{id: string, role: string, content: string, actions: array<int, array{label: string, url: string, kind: string}>, feedback: string|null, created_at: string|null}
      */
-    private function messagePayload(MbsAiChatMessage $message): array
+    private function messagePayload(ModelMindMessage $message): array
     {
         return [
             'id' => $message->uuid,
@@ -207,7 +207,7 @@ class MbsAiChatController extends Controller
     /**
      * @return array<int, array{label: string, url: string, kind: string}>
      */
-    private function messageActions(MbsAiChatMessage $message): array
+    private function messageActions(ModelMindMessage $message): array
     {
         $actions = $message->metadata['actions'] ?? [];
 
@@ -232,7 +232,7 @@ class MbsAiChatController extends Controller
     /**
      * @param  array<int, array{role: string, content: string}>  $history
      */
-    private function importLegacyHistory(MbsAiChatSession $session, array $history): void
+    private function importLegacyHistory(ModelMindSession $session, array $history): void
     {
         if ($history === [] || $session->messages()->exists()) {
             return;
@@ -242,9 +242,9 @@ class MbsAiChatController extends Controller
             ->take(-12)
             ->each(function (array $message) use ($session): void {
                 $session->messages()->create([
-                    'role' => $message['role'] === MbsAiChatMessage::ROLE_ASSISTANT
-                        ? MbsAiChatMessage::ROLE_ASSISTANT
-                        : MbsAiChatMessage::ROLE_USER,
+                    'role' => $message['role'] === ModelMindMessage::ROLE_ASSISTANT
+                        ? ModelMindMessage::ROLE_ASSISTANT
+                        : ModelMindMessage::ROLE_USER,
                     'content' => str($message['content'] ?? '')->squish()->limit(5000, '')->toString(),
                     'metadata' => ['source' => 'legacy_browser_history'],
                 ]);

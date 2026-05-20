@@ -1,15 +1,15 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Models;
+namespace Mbs\ModelMind\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
-class MbsAiChatSession extends Model
+class ModelMindSession extends Model
 {
-    protected $table = 'mbs_ai_chat_sessions';
+    protected $table = 'model_mind_sessions';
 
     protected $fillable = [
         'uuid',
@@ -24,7 +24,7 @@ class MbsAiChatSession extends Model
 
     protected static function booted(): void
     {
-        static::creating(function (MbsAiChatSession $session): void {
+        static::creating(function (ModelMindSession $session): void {
             $session->uuid ??= (string) Str::uuid();
         });
     }
@@ -39,7 +39,7 @@ class MbsAiChatSession extends Model
 
     public function messages(): HasMany
     {
-        return $this->hasMany(MbsAiChatMessage::class)->oldest('id');
+        return $this->hasMany(ModelMindMessage::class)->oldest('id');
     }
 
     public function getRouteKeyName(): string
@@ -57,8 +57,8 @@ class MbsAiChatSession extends Model
 
     public function compactForPrompt(): void
     {
-        $recentLimit = (int) config('mbs-ai-chat.memory.recent_messages', 12);
-        $summaryLimit = (int) config('mbs-ai-chat.memory.summary_characters', 3000);
+        $recentLimit = (int) config('model-mind.memory.recent_messages', 12);
+        $summaryLimit = (int) config('model-mind.memory.summary_characters', 3000);
         $messageCount = $this->messages()->count();
         $olderMessageCount = max(0, $messageCount - $recentLimit);
         $alreadyCompactedCount = min((int) $this->compacted_message_count, $olderMessageCount);
@@ -88,11 +88,11 @@ class MbsAiChatSession extends Model
     }
 
     /**
-     * @return Collection<int, MbsAiChatMessage>
+     * @return Collection<int, ModelMindMessage>
      */
     public function recentMessagesForPrompt(): Collection
     {
-        $recentLimit = (int) config('mbs-ai-chat.memory.recent_messages', 12);
+        $recentLimit = (int) config('model-mind.memory.recent_messages', 12);
 
         return $this->messages()
             ->reorder()
@@ -104,13 +104,13 @@ class MbsAiChatSession extends Model
     }
 
     /**
-     * @param  Collection<int, MbsAiChatMessage>  $olderMessages
+     * @param  Collection<int, ModelMindMessage>  $olderMessages
      */
     private function buildConversationSummary(Collection $olderMessages, int $summaryLimit): string
     {
         $previousSummary = str($this->conversation_summary ?? '')->squish()->toString();
         $olderDigest = $olderMessages
-            ->map(fn (MbsAiChatMessage $message): string => sprintf(
+            ->map(fn (ModelMindMessage $message): string => sprintf(
                 '%s%s: %s',
                 $message->isAssistant() ? 'Assistant' : 'Visitor',
                 $message->feedback ? " ({$message->feedback})" : '',

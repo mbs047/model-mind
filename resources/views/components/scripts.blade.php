@@ -1,5 +1,5 @@
 <script>
-    window.mbsAiChat = ({
+    window.modelMind = ({
         endpoint,
         sessionEndpoint,
         feedbackEndpoint,
@@ -7,7 +7,7 @@
         initialMessage = null,
         quickQuestions = [],
         fallbackAnswer = null,
-        storageKey = 'mbs-ai-chat-state',
+        storageKey = 'model-mind-state',
         browserMessages = 60,
         historyMessages = 12,
         feedbackEnabled = true,
@@ -37,7 +37,7 @@
             return [{
                 localId: `local-${this.nextLocalId++}`,
                 role: 'assistant',
-                content: initialMessage || 'Hi, I am MBS Assistant. I can answer from the application data that has been safely enabled for me.',
+                content: initialMessage || 'Hi, I am ModelMind. I can answer from the application data that has been safely enabled for me.',
             }];
         },
         restore() {
@@ -152,7 +152,7 @@
         isInitialAssistantMessage(message) {
             return message.role === 'assistant' &&
                 !message.id &&
-                message.content === (initialMessage || 'Hi, I am MBS Assistant. I can answer from the application data that has been safely enabled for me.');
+                message.content === (initialMessage || 'Hi, I am ModelMind. I can answer from the application data that has been safely enabled for me.');
         },
         recentHistory(exceptLocalId = null) {
             return this.messages
@@ -221,7 +221,7 @@
                 }
 
                 if (!response.ok) {
-                    throw new Error(payload.message || 'MBS Assistant is unavailable right now.');
+                    throw new Error(payload.message || 'ModelMind is unavailable right now.');
                 }
 
                 this.sessionId = payload.session_id || this.sessionId;
@@ -236,7 +236,7 @@
                     feedback: null,
                 });
             } catch (error) {
-                this.failure = error.message || 'MBS Assistant is unavailable right now.';
+                this.failure = error.message || 'ModelMind is unavailable right now.';
             } finally {
                 this.messages = this.messages.filter((message) => message.localId !== pendingMessage.localId);
                 this.sending = false;

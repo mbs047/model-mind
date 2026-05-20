@@ -1,11 +1,11 @@
 <?php
 
-namespace Mbs\LaravelAiChat\Support\Context;
+namespace Mbs\ModelMind\Support\Context;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
-use Mbs\LaravelAiChat\Concerns\HasAiChatContext;
+use Mbs\ModelMind\Concerns\HasModelMindContext;
 
 class ModelContextBuilder
 {
@@ -46,14 +46,14 @@ class ModelContextBuilder
                 }
             }
 
-            if (in_array(HasAiChatContext::class, class_uses_recursive($model), true)) {
-                $query = $model->aiChatContextQuery($query);
+            if (in_array(HasModelMindContext::class, class_uses_recursive($model), true)) {
+                $query = $model->modelMindContextQuery($query);
             }
 
             $rows = $query
                 ->limit(min(
-                    (int) ($settings['limit'] ?? config('mbs-ai-chat.security.max_rows_per_model', 50)),
-                    (int) config('mbs-ai-chat.security.max_rows_per_model', 50),
+                    (int) ($settings['limit'] ?? config('model-mind.security.max_rows_per_model', 50)),
+                    (int) config('model-mind.security.max_rows_per_model', 50),
                 ))
                 ->get()
                 ->map(fn (Model $record): array => $this->recordContext($record, $columns))
@@ -79,8 +79,8 @@ class ModelContextBuilder
      */
     private function recordContext(Model $record, array $columns): array
     {
-        if (in_array(HasAiChatContext::class, class_uses_recursive($record), true)) {
-            $custom = $record->toAiChatContext();
+        if (in_array(HasModelMindContext::class, class_uses_recursive($record), true)) {
+            $custom = $record->toModelMindContext();
 
             if ($custom !== []) {
                 return $this->cleanArray($custom);
@@ -98,24 +98,24 @@ class ModelContextBuilder
      */
     private function traitRelations(Model $model): array
     {
-        if (! in_array(HasAiChatContext::class, class_uses_recursive($model), true)) {
+        if (! in_array(HasModelMindContext::class, class_uses_recursive($model), true)) {
             return [];
         }
 
-        return $model->aiChatContextRelations();
+        return $model->modelMindContextRelations();
     }
 
     private function traitLabel(Model $model): ?string
     {
-        return in_array(HasAiChatContext::class, class_uses_recursive($model), true)
-            ? $model->aiChatLabel()
+        return in_array(HasModelMindContext::class, class_uses_recursive($model), true)
+            ? $model->modelMindLabel()
             : null;
     }
 
     private function traitDescription(Model $model): ?string
     {
-        return in_array(HasAiChatContext::class, class_uses_recursive($model), true)
-            ? $model->aiChatDescription()
+        return in_array(HasModelMindContext::class, class_uses_recursive($model), true)
+            ? $model->modelMindDescription()
             : null;
     }
 
@@ -131,13 +131,13 @@ class ModelContextBuilder
 
         $text = (string) $value;
 
-        if (config('mbs-ai-chat.security.strip_html', true)) {
+        if (config('model-mind.security.strip_html', true)) {
             $text = strip_tags($text);
         }
 
         return str($text)
             ->squish()
-            ->limit((int) config('mbs-ai-chat.security.field_character_limit', 900), '')
+            ->limit((int) config('model-mind.security.field_character_limit', 900), '')
             ->toString();
     }
 

@@ -3,19 +3,19 @@
         display: none !important;
     }
 
-    .mbs-ai-chat-thinking-dot {
-        animation: mbs-ai-chat-bounce 1s infinite;
+    .model-mind-thinking-dot {
+        animation: model-mind-bounce 1s infinite;
     }
 
-    .mbs-ai-chat-thinking-dot:nth-child(2) {
+    .model-mind-thinking-dot:nth-child(2) {
         animation-delay: 120ms;
     }
 
-    .mbs-ai-chat-thinking-dot:nth-child(3) {
+    .model-mind-thinking-dot:nth-child(3) {
         animation-delay: 240ms;
     }
 
-    @keyframes mbs-ai-chat-bounce {
+    @keyframes model-mind-bounce {
         0%, 80%, 100% {
             transform: translateY(0);
             opacity: .45;

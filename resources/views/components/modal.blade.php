@@ -1,27 +1,27 @@
-@php($assistant = config('mbs-ai-chat.assistant'))
+@php($assistant = config('model-mind.assistant'))
 
 <div
-    x-data="mbsAiChat({
-        endpoint: '{{ route(config('mbs-ai-chat.routes.name', 'mbs-ai-chat.').'chat') }}',
-        sessionEndpoint: '{{ route(config('mbs-ai-chat.routes.name', 'mbs-ai-chat.').'session') }}',
-        feedbackEndpoint: '{{ url(config('mbs-ai-chat.routes.prefix', 'mbs-ai-chat').'/messages') }}',
+    x-data="modelMind({
+        endpoint: '{{ route(config('model-mind.routes.name', 'model-mind.').'chat') }}',
+        sessionEndpoint: '{{ route(config('model-mind.routes.name', 'model-mind.').'session') }}',
+        feedbackEndpoint: '{{ url(config('model-mind.routes.prefix', 'model-mind').'/messages') }}',
         csrfToken: '{{ csrf_token() }}',
         initialMessage: @js($assistant['initial_message'] ?? null),
         quickQuestions: @js($assistant['quick_questions'] ?? []),
         fallbackAnswer: @js($assistant['fallback_answer'] ?? null),
-        storageKey: @js(config('mbs-ai-chat.ui.storage_key', 'mbs-ai-chat-state')),
-        browserMessages: @js((int) config('mbs-ai-chat.memory.browser_messages', 60)),
-        historyMessages: @js((int) config('mbs-ai-chat.memory.recent_messages', 12)),
-        feedbackEnabled: @js((bool) config('mbs-ai-chat.features.feedback', true)),
+        storageKey: @js(config('model-mind.ui.storage_key', 'model-mind-state')),
+        browserMessages: @js((int) config('model-mind.memory.browser_messages', 60)),
+        historyMessages: @js((int) config('model-mind.memory.recent_messages', 12)),
+        feedbackEnabled: @js((bool) config('model-mind.features.feedback', true)),
     })"
     x-init="init()"
-    @mbs-ai-chat:toggle.window="toggle()"
+    @model-mind:toggle.window="toggle()"
     class="fixed inset-x-3 bottom-5 z-[80] print:hidden sm:inset-x-auto sm:right-5 sm:w-[25rem]"
     x-cloak
 >
     <div
         x-show="open"
-        id="mbs-ai-chat-panel"
+        id="model-mind-panel"
         x-transition:enter="transition duration-200 ease-out"
         x-transition:enter-start="translate-y-2 scale-95 opacity-0"
         x-transition:enter-end="translate-y-0 scale-100 opacity-100"
@@ -31,14 +31,14 @@
         class="mb-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl shadow-slate-900/15 dark:border-white/10 dark:bg-slate-950"
         role="dialog"
         aria-modal="false"
-        aria-labelledby="mbs-ai-chat-title"
+        aria-labelledby="model-mind-title"
     >
         <div class="border-b border-slate-200 bg-slate-950 p-4 text-white dark:border-white/10">
             <div class="flex items-start justify-between gap-3">
                 <div class="flex items-center gap-3">
-                    <span class="inline-flex size-10 items-center justify-center rounded-xl bg-white text-sm font-black text-slate-950">MBS</span>
+                    <span class="inline-flex size-10 items-center justify-center rounded-xl bg-white text-sm font-black text-slate-950">{{ $assistant['brand_mark'] ?? 'MBS' }}</span>
                     <div>
-                        <p id="mbs-ai-chat-title" class="text-sm font-bold">{{ $assistant['name'] ?? 'MBS Assistant' }}</p>
+                        <p id="model-mind-title" class="text-sm font-bold">{{ $assistant['name'] ?? 'ModelMind' }}</p>
                         <p class="text-xs font-medium text-slate-300">{{ $assistant['subtitle'] ?? 'AI assistant powered by your application data' }}</p>
                     </div>
                 </div>
@@ -47,7 +47,7 @@
                     type="button"
                     class="inline-flex size-8 items-center justify-center rounded-full border border-white/10 text-white/75 transition hover:bg-white/10 hover:text-white"
                     @click="open = false"
-                    aria-label="Close MBS Assistant"
+                    aria-label="Close ModelMind"
                 >
                     <span aria-hidden="true">&times;</span>
                 </button>
@@ -68,9 +68,9 @@
                             <span x-show="message.pendingAssistant" class="inline-flex items-center gap-1 font-semibold text-slate-500">
                                 <span>Writing</span>
                                 <span class="mb-1 inline-flex gap-0.5" aria-hidden="true">
-                                    <span class="mbs-ai-chat-thinking-dot">.</span>
-                                    <span class="mbs-ai-chat-thinking-dot">.</span>
-                                    <span class="mbs-ai-chat-thinking-dot">.</span>
+                                    <span class="model-mind-thinking-dot">.</span>
+                                    <span class="model-mind-thinking-dot">.</span>
+                                    <span class="model-mind-thinking-dot">.</span>
                                 </span>
                             </span>
                         </div>
@@ -124,9 +124,9 @@
             </div>
 
             <form class="flex items-end gap-2" @submit.prevent="ask()">
-                <label for="mbs-ai-chat-question" class="sr-only">Ask MBS Assistant</label>
+                <label for="model-mind-question" class="sr-only">Ask ModelMind</label>
                 <textarea
-                    id="mbs-ai-chat-question"
+                    id="model-mind-question"
                     x-model.trim="draft"
                     rows="1"
                     maxlength="2000"
@@ -153,9 +153,9 @@
         class="flex items-center gap-3 rounded-full border border-slate-200 bg-white px-4 py-3 text-slate-950 shadow-xl shadow-slate-900/10 transition hover:-translate-y-0.5 hover:border-slate-400 dark:border-white/10 dark:bg-slate-950 dark:text-white"
         @click="toggle()"
         :aria-expanded="open ? 'true' : 'false'"
-        aria-controls="mbs-ai-chat-panel"
+        aria-controls="model-mind-panel"
     >
-        <span class="inline-flex size-9 items-center justify-center rounded-full bg-slate-950 text-[0.65rem] font-black text-white dark:bg-white dark:text-slate-950">MBS</span>
-        <span class="text-sm font-black">{{ $assistant['launcher_label'] ?? 'Ask MBS' }}</span>
+        <span class="inline-flex size-9 items-center justify-center rounded-full bg-slate-950 text-[0.65rem] font-black text-white dark:bg-white dark:text-slate-950">{{ $assistant['brand_mark'] ?? 'MBS' }}</span>
+        <span class="text-sm font-black">{{ $assistant['launcher_label'] ?? 'Ask ModelMind' }}</span>
     </button>
 </div>
