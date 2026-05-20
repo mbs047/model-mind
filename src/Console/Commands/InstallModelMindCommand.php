@@ -8,10 +8,11 @@ class InstallModelMindCommand extends Command
 {
     protected $signature = 'model-mind:install
         {--views : Publish the customizable Blade views}
+        {--assets : Publish the public CSS and JavaScript assets}
         {--force : Overwrite previously published files}
         {--dry-run : Show the publish steps without writing files}';
 
-    protected $description = 'Publish the ModelMind configuration and migrations.';
+    protected $description = 'Publish the ModelMind configuration, migrations, views, and assets.';
 
     public function handle(): int
     {
@@ -24,6 +25,10 @@ class InstallModelMindCommand extends Command
 
         if ($this->option('views')) {
             $tags[] = 'model-mind-views';
+        }
+
+        if ($this->option('assets')) {
+            $tags[] = 'model-mind-assets';
         }
 
         foreach ($tags as $tag) {

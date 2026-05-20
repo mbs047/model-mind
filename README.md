@@ -100,15 +100,16 @@ MODEL_MIND_Z_INDEX=9999
 MODEL_MIND_TABLE_PREFIX=model_mind_
 MODEL_MIND_CONTEXT_CACHE_SECONDS=600
 MODEL_MIND_MAX_OUTPUT_TOKENS=450
+MODEL_MIND_USE_PUBLIC_ASSETS=false
 ```
 
 Supported widget positions are `bottom-right`, `bottom-left`, `bottom-center`, `top-right`, `top-left`, `top-center`, `center`, `center-left`, and `center-right`. Short aliases are accepted for `top`, `bottom`, `left`, and `right`.
 
 ## Full Documentation
 
-Read the complete usage guide in [docs/USAGE.md](docs/USAGE.md). It covers installation, Blade directives, model configuration, security rules, learning memory, feedback, table prefixes, positions, OpenAI settings, custom providers, custom context providers, actions, testing, and release practices.
+Read the documentation index in [docs/README.md](docs/README.md). Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, model configuration, route actions, security, learning memory, feedback, table prefixes, providers, routes, performance, and testing.
 
-For custom UI work, read [docs/CUSTOMIZING-THE-MODAL.md](docs/CUSTOMIZING-THE-MODAL.md). You can publish the default Blade views, or point ModelMind to a completely new modal, styles, and script from config.
+For custom UI work, read [docs/customizing-the-modal.md](docs/customizing-the-modal.md). You can publish the default Blade views, or point ModelMind to a completely new modal, styles, and script from config.
 
 For application links, configure named route actions in `config/model-mind.php`; ModelMind will only turn approved route tokens into buttons.
 

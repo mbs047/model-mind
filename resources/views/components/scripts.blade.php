@@ -1,3 +1,6 @@
+@if (config('model-mind.assets.use_public', false))
+    <script src="{{ asset(config('model-mind.assets.scripts_path', 'vendor/model-mind/model-mind.js')) }}" defer></script>
+@else
 <script>
     (() => {
         const defaultInitialMessage = 'Hi, I am ModelMind. I can answer from the application data that has been safely enabled for me.';
@@ -551,3 +554,4 @@
         };
     })();
 </script>
+@endif

@@ -1,3 +1,6 @@
+@if (config('model-mind.assets.use_public', false))
+    <link rel="stylesheet" href="{{ asset(config('model-mind.assets.styles_path', 'vendor/model-mind/model-mind.css')) }}">
+@else
 <style>
     .model-mind-widget {
         color-scheme: light;
@@ -130,3 +133,4 @@
         }
     }
 </style>
+@endif

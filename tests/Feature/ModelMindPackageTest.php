@@ -133,6 +133,34 @@ class ModelMindPackageTest extends TestCase
         $this->assertStringContainsString('Inline design', $inlineHtml);
     }
 
+    public function test_public_assets_can_be_rendered_and_published_separately(): void
+    {
+        config()->set('model-mind.assets.use_public', true);
+        config()->set('model-mind.assets.styles_path', 'vendor/model-mind/custom.css');
+        config()->set('model-mind.assets.scripts_path', 'vendor/model-mind/custom.js');
+
+        $html = Blade::render('@modelMindStyles @modelMindScripts');
+
+        $this->assertStringContainsString('href="http://localhost/vendor/model-mind/custom.css"', $html);
+        $this->assertStringContainsString('src="http://localhost/vendor/model-mind/custom.js"', $html);
+        $this->assertStringContainsString('defer', $html);
+        $this->assertStringNotContainsString('<style>', $html);
+        $this->assertStringNotContainsString('window.ModelMind', $html);
+
+        Artisan::call('model-mind:install', [
+            '--assets' => true,
+            '--dry-run' => true,
+        ]);
+
+        $this->assertStringContainsString('Would publish [model-mind-assets].', Artisan::output());
+
+        Artisan::call('model-mind:publish-assets', [
+            '--dry-run' => true,
+        ]);
+
+        $this->assertStringContainsString('Would publish [model-mind-assets].', Artisan::output());
+    }
+
     public function test_package_uses_a_single_model_mind_migration_file(): void
     {
         $migrations = glob(__DIR__.'/../../database/migrations/*model_mind*.php') ?: [];

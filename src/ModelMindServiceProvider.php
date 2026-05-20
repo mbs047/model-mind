@@ -11,6 +11,7 @@ use Illuminate\Support\ServiceProvider;
 use Mbs\ModelMind\Console\Commands\InspectModelMindContextCommand;
 use Mbs\ModelMind\Console\Commands\InstallModelMindCommand;
 use Mbs\ModelMind\Console\Commands\LearnModelMindKnowledgeCommand;
+use Mbs\ModelMind\Console\Commands\PublishModelMindAssetsCommand;
 use Mbs\ModelMind\Contracts\ModelMindProvider;
 use Mbs\ModelMind\Support\Providers\OpenAiModelMindProvider;
 use Mbs\ModelMind\Support\Views\ModelMindViewRenderer;
@@ -78,6 +79,10 @@ class ModelMindServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../resources/views' => resource_path('views/vendor/model-mind'),
         ], 'model-mind-views');
+
+        $this->publishes([
+            __DIR__.'/../resources/dist' => public_path('vendor/model-mind'),
+        ], 'model-mind-assets');
     }
 
     private function registerRateLimiter(): void
@@ -97,6 +102,7 @@ class ModelMindServiceProvider extends ServiceProvider
             InstallModelMindCommand::class,
             InspectModelMindContextCommand::class,
             LearnModelMindKnowledgeCommand::class,
+            PublishModelMindAssetsCommand::class,
         ]);
     }
 }

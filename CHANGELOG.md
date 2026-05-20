@@ -6,6 +6,14 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+### Added
+
+- Public asset publishing for the default CSS and JavaScript through `model-mind:publish-assets`, the `model-mind-assets` tag, and `model-mind:install --assets`.
+
+### Changed
+
+- Split the usage documentation into focused feature guides.
+
 ## v1.0.5 - 2026-05-20
 
 ### Added

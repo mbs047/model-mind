@@ -137,6 +137,12 @@ return [
         'scripts' => env('MODEL_MIND_SCRIPTS_VIEW', 'model-mind::components.scripts'),
     ],
 
+    'assets' => [
+        'use_public' => filter_var(env('MODEL_MIND_USE_PUBLIC_ASSETS', false), FILTER_VALIDATE_BOOL),
+        'styles_path' => env('MODEL_MIND_STYLES_ASSET', 'vendor/model-mind/model-mind.css'),
+        'scripts_path' => env('MODEL_MIND_SCRIPTS_ASSET', 'vendor/model-mind/model-mind.js'),
+    ],
+
     'features' => [
         'feedback' => true,
         'actions' => true,

@@ -31,21 +31,41 @@ Laravel automatically prefers published package views over vendor package views,
 
 ## Create a New Design
 
-Create your own Blade files:
+Create your modal Blade file and public asset files:
 
 ```text
 resources/views/components/ai/model-mind-modal.blade.php
-resources/views/components/ai/model-mind-styles.blade.php
-resources/views/components/ai/model-mind-scripts.blade.php
+public/vendor/model-mind/model-mind.css
+public/vendor/model-mind/model-mind.js
 ```
 
-Then update `config/model-mind.php`:
+Publish the package assets first if you want a starting point:
+
+```bash
+php artisan model-mind:publish-assets
+```
+
+Or publish only the asset group with Laravel's native command:
+
+```bash
+php artisan vendor:publish --tag=model-mind-assets
+```
+
+See [Public Assets](public-assets.md) for the standalone asset guide.
+
+Then update `config/model-mind.php` so only the modal markup is a custom Blade view and the styles/scripts come from public assets:
 
 ```php
 'views' => [
     'modal' => env('MODEL_MIND_MODAL_VIEW', 'components.ai.model-mind-modal'),
-    'styles' => env('MODEL_MIND_STYLES_VIEW', 'components.ai.model-mind-styles'),
-    'scripts' => env('MODEL_MIND_SCRIPTS_VIEW', 'components.ai.model-mind-scripts'),
+    'styles' => env('MODEL_MIND_STYLES_VIEW', 'model-mind::components.styles'),
+    'scripts' => env('MODEL_MIND_SCRIPTS_VIEW', 'model-mind::components.scripts'),
+],
+
+'assets' => [
+    'use_public' => true,
+    'styles_path' => 'vendor/model-mind/model-mind.css',
+    'scripts_path' => 'vendor/model-mind/model-mind.js',
 ],
 ```
 
@@ -53,8 +73,9 @@ Or use environment variables:
 
 ```env
 MODEL_MIND_MODAL_VIEW=components.ai.model-mind-modal
-MODEL_MIND_STYLES_VIEW=components.ai.model-mind-styles
-MODEL_MIND_SCRIPTS_VIEW=components.ai.model-mind-scripts
+MODEL_MIND_USE_PUBLIC_ASSETS=true
+MODEL_MIND_STYLES_ASSET=vendor/model-mind/model-mind.css
+MODEL_MIND_SCRIPTS_ASSET=vendor/model-mind/model-mind.js
 ```
 
 ## Override Views in Blade
@@ -62,18 +83,14 @@ MODEL_MIND_SCRIPTS_VIEW=components.ai.model-mind-scripts
 For one layout only:
 
 ```blade
-@modelMindStyles('components.ai.model-mind-styles')
 @modelMindModal('components.ai.model-mind-modal')
-@modelMindScripts('components.ai.model-mind-scripts')
 ```
 
-Or pass all view names at once:
+Or pass the modal view name while leaving styles and scripts on the configured public assets:
 
 ```blade
 @modelMind([
     'modal' => 'components.ai.model-mind-modal',
-    'styles' => 'components.ai.model-mind-styles',
-    'scripts' => 'components.ai.model-mind-scripts',
 ])
 ```
 
@@ -207,33 +224,27 @@ Then use standard Tailwind variants:
 
 If Tailwind does not generate package classes, include the package or custom view paths in your Tailwind source scan.
 
-## Replacing Only the Styling
+## Replacing Only the Public Assets
 
-Keep the package modal and script, but use your own styles:
+Keep the package modal, but use your own CSS file:
 
 ```env
-MODEL_MIND_STYLES_VIEW=components.ai.model-mind-styles
+MODEL_MIND_USE_PUBLIC_ASSETS=true
+MODEL_MIND_STYLES_ASSET=vendor/model-mind/custom.css
 ```
 
-Your style view can be normal CSS:
+Keep the package modal, but use your own JavaScript file:
 
-```blade
-<style>
-    .model-mind-widget [data-model-mind-panel] {
-        border-radius: 18px;
-    }
-</style>
+```env
+MODEL_MIND_USE_PUBLIC_ASSETS=true
+MODEL_MIND_SCRIPTS_ASSET=vendor/model-mind/custom.js
 ```
 
 ## Replacing the Script
 
 Only replace the script when you need a different client-side behavior, such as streaming, custom animations, or a design-system state manager.
 
-```env
-MODEL_MIND_SCRIPTS_VIEW=components.ai.model-mind-scripts
-```
-
-Your script should still post to the configured endpoints:
+Use `MODEL_MIND_SCRIPTS_ASSET` for a public file. Your script should still post to the configured endpoints:
 
 - `POST` to `endpoint` for questions.
 - `GET` to `sessionEndpoint` for history restore.
