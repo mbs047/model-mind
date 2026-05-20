@@ -1,3 +1,7 @@
+<p align="center">
+    <img src="art/model-mind-banner.png" alt="ModelMind - AI assistant for your Laravel application">
+</p>
+
 # ModelMind
 
 A secure, configurable, model-aware AI chat assistant for Laravel applications.
