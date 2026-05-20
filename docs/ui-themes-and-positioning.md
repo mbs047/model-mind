@@ -8,6 +8,7 @@ MODEL_MIND_NAME=ModelMind
 MODEL_MIND_SUBTITLE="AI assistant powered by your application data"
 MODEL_MIND_LAUNCHER_LABEL="Ask ModelMind"
 MODEL_MIND_PLACEHOLDER="Ask about the enabled application data"
+MODEL_MIND_DEFAULT_QUESTIONS="What can you help with?|What data can you see?|How do I configure you?"
 MODEL_MIND_THEME=auto
 MODEL_MIND_POSITION=bottom-right
 MODEL_MIND_WIDTH=25rem

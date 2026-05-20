@@ -73,6 +73,8 @@
             feedbackEnabled: Boolean(config.feedbackEnabled ?? true),
             browserMessageLimit: Math.max(30, Number(config.browserMessages) || 60),
             historyMessageLimit: Math.max(8, Number(config.historyMessages) || 12),
+            sessionLifetimeMinutes: Math.max(0, Number(config.sessionLifetimeMinutes) || 0),
+            sessionExpiresAt: null,
             quickQuestions: Array.isArray(config.quickQuestions) && config.quickQuestions.length
                 ? config.quickQuestions
                 : defaultQuickQuestions,
@@ -88,6 +90,30 @@
             content: initialMessage,
         }];
 
+        const nextSessionExpiresAt = () => (
+            state.sessionLifetimeMinutes > 0
+                ? new Date(Date.now() + (state.sessionLifetimeMinutes * 60 * 1000)).toISOString()
+                : null
+        );
+
+        const isExpired = (expiresAt) => (
+            typeof expiresAt === 'string' &&
+            expiresAt.length > 0 &&
+            Date.parse(expiresAt) <= Date.now()
+        );
+
+        const resetLocalSession = () => {
+            state.sessionId = null;
+            state.sessionExpiresAt = null;
+            state.messages = defaultMessages();
+
+            try {
+                localStorage.removeItem(state.storageKey);
+            } catch (error) {
+                // Local storage may be disabled.
+            }
+        };
+
         const scrollToLatest = () => {
             requestAnimationFrame(() => {
                 messagesContainer.scrollTo({
@@ -99,8 +125,10 @@
 
         const persist = () => {
             try {
+                state.sessionExpiresAt = nextSessionExpiresAt();
                 localStorage.setItem(state.storageKey, JSON.stringify({
                     sessionId: state.sessionId,
+                    expiresAt: state.sessionExpiresAt,
                     messages: state.messages
                         .filter((message) => !message.pendingAssistant)
                         .slice(-state.browserMessageLimit)
@@ -122,8 +150,18 @@
             try {
                 const saved = JSON.parse(localStorage.getItem(state.storageKey) || '{}');
 
+                if (isExpired(saved.expiresAt)) {
+                    resetLocalSession();
+
+                    return;
+                }
+
                 if (saved.sessionId) {
                     state.sessionId = saved.sessionId;
+                }
+
+                if (saved.expiresAt) {
+                    state.sessionExpiresAt = saved.expiresAt;
                 }
 
                 if (Array.isArray(saved.messages) && saved.messages.length > 0) {
@@ -398,6 +436,10 @@
         };
 
         const ask = async (question = null) => {
+            if (isExpired(state.sessionExpiresAt)) {
+                resetLocalSession();
+            }
+
             const text = (question || draft.value || '').trim();
 
             if (text.length < 2 || state.sending) {
@@ -454,6 +496,7 @@
                 }
 
                 state.sessionId = payload.session_id || state.sessionId;
+                state.sessionExpiresAt = payload.expires_at || nextSessionExpiresAt();
                 userMessage.id = payload.user_message_id || userMessage.id || null;
                 state.messages = state.messages.filter((message) => message.localId !== pendingMessage.localId);
                 state.messages.push({
@@ -496,9 +539,18 @@
                     return;
                 }
 
+                if (payload.expired || (state.sessionId && payload.session_id === null)) {
+                    resetLocalSession();
+                    render();
+
+                    return;
+                }
+
                 if (payload.session_id) {
                     state.sessionId = payload.session_id;
                 }
+
+                state.sessionExpiresAt = payload.expires_at || state.sessionExpiresAt;
 
                 const serverMessages = normalizedServerMessages(payload.messages || []);
 

@@ -131,11 +131,12 @@ Minimum structure:
         'feedbackEndpoint' => url(config('model-mind.routes.prefix', 'model-mind').'/messages'),
         'csrfToken' => csrf_token(),
         'initialMessage' => $assistant['initial_message'] ?? null,
-        'quickQuestions' => $assistant['quick_questions'] ?? [],
+        'quickQuestions' => $assistant['default_questions'] ?? $assistant['quick_questions'] ?? [],
         'fallbackAnswer' => $assistant['fallback_answer'] ?? null,
         'storageKey' => config('model-mind.ui.storage_key', 'model-mind-state'),
         'browserMessages' => (int) config('model-mind.memory.browser_messages', 60),
         'historyMessages' => (int) config('model-mind.memory.recent_messages', 12),
+        'sessionLifetimeMinutes' => (int) config('model-mind.memory.session_lifetime_minutes', 120),
         'feedbackEnabled' => (bool) config('model-mind.features.feedback', true),
         'theme' => config('model-mind.ui.theme', 'auto'),
     ];

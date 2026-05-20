@@ -108,6 +108,25 @@ class ModelMindPackageTest extends TestCase
         $this->assertSame('assistant_memories', (new ModelMindMemory)->getTable());
     }
 
+    public function test_default_questions_and_session_lifetime_are_configurable(): void
+    {
+        config()->set('model-mind.assistant.default_questions', [
+            'Which products are low in stock?',
+            'Show recent orders',
+        ]);
+        config()->set('model-mind.assistant.quick_questions', [
+            'Legacy question',
+        ]);
+        config()->set('model-mind.memory.session_lifetime_minutes', 15);
+
+        $html = Blade::render('@modelMindModal');
+
+        $this->assertStringContainsString('Which products are low in stock?', $html);
+        $this->assertStringContainsString('Show recent orders', $html);
+        $this->assertStringContainsString('"sessionLifetimeMinutes":15', $html);
+        $this->assertStringNotContainsString('Legacy question', $html);
+    }
+
     public function test_theme_and_custom_views_are_configurable(): void
     {
         config()->set('model-mind.ui.theme', 'dark');
@@ -355,6 +374,48 @@ class ModelMindPackageTest extends TestCase
         ]);
     }
 
+    public function test_expired_sessions_are_reset(): void
+    {
+        config()->set('model-mind.memory.session_lifetime_minutes', 5);
+
+        $expiredSession = ModelMindSession::query()->create([
+            'last_interaction_at' => now()->subMinutes(10),
+        ]);
+        $expiredSession->messages()->create([
+            'role' => ModelMindMessage::ROLE_USER,
+            'content' => 'Old question',
+        ]);
+
+        $this->getJson(route('model-mind.session', [
+            'session_id' => $expiredSession->uuid,
+        ]))
+            ->assertOk()
+            ->assertJsonPath('session_id', null)
+            ->assertJsonPath('expires_at', null)
+            ->assertJsonPath('expired', true)
+            ->assertJsonCount(0, 'messages');
+
+        Http::fake([
+            'api.openai.com/v1/responses' => fn () => Http::response([
+                'output_text' => 'Fresh session answer.',
+            ]),
+        ]);
+
+        $response = $this->postJson(route('model-mind.chat'), [
+            'session_id' => $expiredSession->uuid,
+            'question' => 'Start again',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('answer', 'Fresh session answer.')
+            ->assertJsonStructure(['session_id', 'expires_at']);
+
+        $this->assertNotSame($expiredSession->uuid, $response->json('session_id'));
+        $this->assertDatabaseCount('model_mind_sessions', 2);
+        $this->assertSame(1, $expiredSession->messages()->count());
+    }
+
     public function test_route_actions_can_use_record_label_columns_and_templates(): void
     {
         config()->set('model-mind.models', [
@@ -398,6 +459,49 @@ class ModelMindPackageTest extends TestCase
             ->assertOk()
             ->assertJsonPath('answer', 'Here is the product.')
             ->assertJsonPath('actions.0.label', 'Open Samsung Galaxy S24 Ultra')
+            ->assertJsonPath('actions.0.kind', 'route')
+            ->assertJsonPath('actions.0.url', url("/knowledge/{$entry->id}"));
+    }
+
+    public function test_route_actions_are_inferred_from_multilingual_answers(): void
+    {
+        config()->set('model-mind.models', [
+            KnowledgeEntry::class => [
+                'enabled' => true,
+                'columns' => 'auto',
+                'limit' => 10,
+                'route_actions' => [
+                    'knowledge.view' => [
+                        'label' => 'Open product',
+                        'label_column' => 'title',
+                        'label_template' => 'View {title}',
+                        'route' => 'knowledge.show',
+                        'parameters' => ['entry' => 'id'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $entry = KnowledgeEntry::query()->create([
+            'title' => 'Apple iPhone 15 128GB',
+            'body' => 'A premium smartphone with 5G.',
+            'is_public' => true,
+        ]);
+
+        Http::fake([
+            'api.openai.com/v1/responses' => fn () => Http::response([
+                'output_text' => 'يمكنك فتح صفحة عرض المنتج Apple iPhone 15 128GB للحصول على التفاصيل.',
+            ]),
+        ]);
+
+        $response = $this->postJson(route('model-mind.chat'), [
+            'question' => 'أرسل رابط المنتج',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('answer', 'يمكنك فتح صفحة عرض المنتج Apple iPhone 15 128GB للحصول على التفاصيل.')
+            ->assertJsonPath('actions.0.label', 'View Apple iPhone 15 128GB')
             ->assertJsonPath('actions.0.kind', 'route')
             ->assertJsonPath('actions.0.url', url("/knowledge/{$entry->id}"));
     }

@@ -1,16 +1,28 @@
 @php
     $assistant = config('model-mind.assistant');
+    $configuredQuickQuestions = $quickQuestions ?? $assistant['default_questions'] ?? $assistant['quick_questions'] ?? [];
+    $configuredQuickQuestions = is_string($configuredQuickQuestions)
+        ? explode('|', $configuredQuickQuestions)
+        : (array) $configuredQuickQuestions;
+    $configuredQuickQuestions = collect($configuredQuickQuestions)
+        ->filter(fn (mixed $question): bool => is_scalar($question))
+        ->map(fn (mixed $question): string => str(strip_tags((string) $question))->squish()->limit(90, '')->toString())
+        ->filter()
+        ->take(6)
+        ->values()
+        ->all();
     $modelMindConfig = [
         'endpoint' => route(config('model-mind.routes.name', 'model-mind.').'chat'),
         'sessionEndpoint' => route(config('model-mind.routes.name', 'model-mind.').'session'),
         'feedbackEndpoint' => url(config('model-mind.routes.prefix', 'model-mind').'/messages'),
         'csrfToken' => csrf_token(),
         'initialMessage' => $assistant['initial_message'] ?? null,
-        'quickQuestions' => $assistant['quick_questions'] ?? [],
+        'quickQuestions' => $configuredQuickQuestions,
         'fallbackAnswer' => $assistant['fallback_answer'] ?? null,
         'storageKey' => config('model-mind.ui.storage_key', 'model-mind-state'),
         'browserMessages' => (int) config('model-mind.memory.browser_messages', 60),
         'historyMessages' => (int) config('model-mind.memory.recent_messages', 12),
+        'sessionLifetimeMinutes' => max(0, (int) config('model-mind.memory.session_lifetime_minutes', 120)),
         'feedbackEnabled' => (bool) config('model-mind.features.feedback', true),
     ];
     $ui = config('model-mind.ui', []);

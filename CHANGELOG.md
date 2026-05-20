@@ -6,6 +6,16 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+### Added
+
+- Configurable default questions through `assistant.default_questions` and `MODEL_MIND_DEFAULT_QUESTIONS`.
+- Configurable session expiry through `memory.session_lifetime_minutes` and `MODEL_MIND_SESSION_LIFETIME_MINUTES`.
+- Multilingual route action recovery when the assistant mentions configured records but does not copy exact route tokens.
+
+### Changed
+
+- Renamed the demo link to Market Lane Store in the README.
+
 ## v1.0.7 - 2026-05-20
 
 ### Added

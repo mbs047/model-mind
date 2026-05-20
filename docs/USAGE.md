@@ -8,8 +8,9 @@ This page is the compact starting point for ModelMind. Each major feature now ha
 2. Copy a starting setup: [Examples](examples.md)
 3. Configure OpenAI: [OpenAI Configuration](openai.md)
 4. Render the widget: [Blade Rendering](blade-rendering.md)
-5. Enable application data: [Models and Context](models.md)
-6. Inspect what the assistant can see: [Security Controls](security.md)
+5. Configure starter prompts: [Default Questions](default-questions.md)
+6. Enable application data: [Models and Context](models.md)
+7. Inspect what the assistant can see: [Security Controls](security.md)
 
 ## Feature Guides
 
@@ -17,6 +18,7 @@ This page is the compact starting point for ModelMind. Each major feature now ha
 - [Examples](examples.md)
 - [OpenAI Configuration](openai.md)
 - [Blade Rendering](blade-rendering.md)
+- [Default Questions](default-questions.md)
 - [UI, Themes, and Positioning](ui-themes-and-positioning.md)
 - [Models and Context](models.md)
 - [Per-Model Overrides](per-model-overrides.md)
@@ -25,6 +27,7 @@ This page is the compact starting point for ModelMind. Each major feature now ha
 - [Security Controls](security.md)
 - [Learning Memory](learning-memory.md)
 - [Feedback](feedback.md)
+- [Sessions](sessions.md)
 - [Database Tables](database-tables.md)
 - [Public Assets](public-assets.md)
 - [Customizing the Chat Modal](customizing-the-modal.md)

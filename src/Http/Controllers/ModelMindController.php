@@ -72,6 +72,7 @@ class ModelMindController extends Controller
             'answer' => $prepared['answer'],
             'actions' => $prepared['actions'],
             'session_id' => $session->uuid,
+            'expires_at' => $this->sessionExpiresAt($session),
             'user_message_id' => $userMessage->uuid,
             'message_id' => $assistantMessage->uuid,
         ]);
@@ -79,12 +80,15 @@ class ModelMindController extends Controller
 
     public function session(Request $request): JsonResponse
     {
-        $session = $this->resolveExistingSession($this->normalizeUuid($request->query('session_id')))
+        $requestedSessionId = $this->normalizeUuid($request->query('session_id'));
+        $session = $this->resolveExistingSession($requestedSessionId, $request)
             ?? $this->resolveSessionFromRequestSession($request);
 
         if (! $session) {
             return response()->json([
                 'session_id' => null,
+                'expires_at' => null,
+                'expired' => $requestedSessionId !== null,
                 'messages' => [],
             ]);
         }
@@ -101,6 +105,8 @@ class ModelMindController extends Controller
 
         return response()->json([
             'session_id' => $session->uuid,
+            'expires_at' => $this->sessionExpiresAt($session),
+            'expired' => false,
             'messages' => $messages
                 ->map(fn (ModelMindMessage $message): array => $this->messagePayload($message))
                 ->all(),
@@ -137,25 +143,43 @@ class ModelMindController extends Controller
 
     private function resolveSessionFromUuid(?string $uuid, Request $request): ModelMindSession
     {
-        $uuid = $this->normalizeUuid($uuid)
-            ?? $this->sessionUuidFromRequest($request)
-            ?? (string) Str::uuid();
+        $requestedUuid = $this->normalizeUuid($uuid);
 
-        $session = ModelMindSession::query()->firstOrCreate(
-            ['uuid' => $uuid],
-            [
-                'ip_address' => $request->ip(),
-                'user_agent' => str($request->userAgent() ?? '')->limit(1000, '')->toString(),
-                'last_interaction_at' => now(),
-            ],
-        );
+        if ($requestedUuid !== null) {
+            $session = $this->resolveExistingSession($requestedUuid, $request);
+
+            if ($session instanceof ModelMindSession) {
+                $this->rememberSession($request, $session);
+
+                return $session;
+            }
+
+            $this->forgetSession($request);
+        }
+
+        if ($requestedUuid === null) {
+            $session = $this->resolveSessionFromRequestSession($request);
+
+            if ($session instanceof ModelMindSession) {
+                $this->rememberSession($request, $session);
+
+                return $session;
+            }
+        }
+
+        $session = ModelMindSession::query()->create([
+            'uuid' => (string) Str::uuid(),
+            'ip_address' => $request->ip(),
+            'user_agent' => str($request->userAgent() ?? '')->limit(1000, '')->toString(),
+            'last_interaction_at' => now(),
+        ]);
 
         $this->rememberSession($request, $session);
 
         return $session;
     }
 
-    private function resolveExistingSession(?string $uuid): ?ModelMindSession
+    private function resolveExistingSession(?string $uuid, ?Request $request = null): ?ModelMindSession
     {
         $uuid = $this->normalizeUuid($uuid);
 
@@ -163,7 +187,21 @@ class ModelMindController extends Controller
             return null;
         }
 
-        return ModelMindSession::query()->where('uuid', $uuid)->first();
+        $session = ModelMindSession::query()->where('uuid', $uuid)->first();
+
+        if (! $session instanceof ModelMindSession) {
+            return null;
+        }
+
+        if ($this->sessionExpired($session)) {
+            if ($request instanceof Request) {
+                $this->forgetSession($request);
+            }
+
+            return null;
+        }
+
+        return $session;
     }
 
     private function resolveSessionFromRequestSession(Request $request): ?ModelMindSession
@@ -185,6 +223,39 @@ class ModelMindController extends Controller
         if ($request->hasSession()) {
             $request->session()->put('model_mind.session_id', $session->uuid);
         }
+    }
+
+    private function forgetSession(Request $request): void
+    {
+        if ($request->hasSession()) {
+            $request->session()->forget('model_mind.session_id');
+        }
+    }
+
+    private function sessionExpired(ModelMindSession $session): bool
+    {
+        $minutes = max(0, (int) config('model-mind.memory.session_lifetime_minutes', 120));
+
+        if ($minutes === 0) {
+            return false;
+        }
+
+        $lastInteraction = $session->last_interaction_at ?? $session->updated_at ?? $session->created_at;
+
+        return $lastInteraction === null || $lastInteraction->copy()->addMinutes($minutes)->isPast();
+    }
+
+    private function sessionExpiresAt(ModelMindSession $session): ?string
+    {
+        $minutes = max(0, (int) config('model-mind.memory.session_lifetime_minutes', 120));
+
+        if ($minutes === 0) {
+            return null;
+        }
+
+        $lastInteraction = $session->last_interaction_at ?? $session->updated_at ?? $session->created_at ?? now();
+
+        return $lastInteraction->copy()->addMinutes($minutes)->toJSON();
     }
 
     private function normalizeUuid(mixed $uuid): ?string

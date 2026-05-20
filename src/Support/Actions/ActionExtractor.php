@@ -19,6 +19,10 @@ class ActionExtractor
             $cleanAnswer = $this->removeNeedle($cleanAnswer, $routeAction['token']);
         }
 
+        foreach ($this->routeActions->inferredActionsForAnswer($cleanAnswer) as $action) {
+            $this->pushAction($actions, $action);
+        }
+
         foreach ($this->extractUrls($answer) as $url) {
             $this->pushAction($actions, $this->actionForUrl($url));
             $cleanAnswer = $this->removeNeedle($cleanAnswer, $url);
@@ -130,7 +134,8 @@ class ActionExtractor
             return;
         }
 
-        $actions[strtolower(rtrim($action['url'], '/'))] = $action;
+        $key = strtolower(rtrim($action['url'], '/'));
+        $actions[$key] ??= $action;
     }
 
     /**

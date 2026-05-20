@@ -2,8 +2,10 @@
 
 namespace Mbs\ModelMind\Support\Actions;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Schema;
 use Mbs\ModelMind\Concerns\HasModelMindContext;
 use Throwable;
 
@@ -73,6 +75,7 @@ Route actions:
 - When a clickable application link is useful, append one route action token on its own line.
 - Use only the route actions listed here. Do not invent route names, URLs, keys, or parameters.
 - Use route action tokens only when you have the required parameter values in enabled context.
+- If you answer in a non-English language, still copy route action tokens exactly as written. Do not translate the token name, key, parameter names, quotes, or values.
 - The application will convert valid route action tokens into buttons and remove the token from the visitor-facing answer.
 {$lines}
 PROMPT;
@@ -145,25 +148,9 @@ PROMPT;
     {
         return collect($this->modelDefinitions($record::class, $settings))
             ->map(function (array $definition) use ($record): ?array {
-                $parameters = [];
+                $parameters = $this->routeParametersForRecord($definition, $record);
 
-                foreach ($definition['parameters'] as $name => $source) {
-                    $value = $record->getAttribute($source);
-
-                    if (! is_scalar($value)) {
-                        return null;
-                    }
-
-                    $value = $this->cleanParameterValue((string) $value);
-
-                    if ($value === '') {
-                        return null;
-                    }
-
-                    $parameters[$name] = $value;
-                }
-
-                return [
+                return $parameters === null ? null : [
                     'key' => $definition['key'],
                     'label' => $this->labelForRecord($definition, $record),
                     'token' => $this->tokenFor($definition['key'], $parameters),
@@ -172,6 +159,68 @@ PROMPT;
             ->filter()
             ->values()
             ->all();
+    }
+
+    /**
+     * @return array<int, array{label: string, url: string, kind: string}>
+     */
+    public function inferredActionsForAnswer(string $answer): array
+    {
+        if (! (bool) config('model-mind.actions.infer_from_answer', true)) {
+            return [];
+        }
+
+        $normalizedAnswer = $this->normalizeForMatching($answer);
+
+        if ($normalizedAnswer === '') {
+            return [];
+        }
+
+        $actions = [];
+        $maxActions = max(0, (int) config('model-mind.actions.max_actions', 5));
+
+        if ($maxActions === 0) {
+            return [];
+        }
+
+        foreach ((array) config('model-mind.models', []) as $modelClass => $settings) {
+            if (! is_string($modelClass) || ! is_array($settings) || ($settings['enabled'] ?? true) === false) {
+                continue;
+            }
+
+            $definitions = $this->modelDefinitions($modelClass, $settings);
+
+            if ($definitions === []) {
+                continue;
+            }
+
+            foreach ($this->candidateRecordsForAnswer($modelClass, $settings, $definitions, $answer) as $record) {
+                if (! $this->answerMentionsRecord($normalizedAnswer, $record, $settings, $definitions)) {
+                    continue;
+                }
+
+                foreach ($definitions as $definition) {
+                    $parameters = $this->routeParametersForRecord($definition, $record);
+
+                    if ($parameters === null) {
+                        continue;
+                    }
+
+                    $action = $this->resolve($definition['key'], $parameters);
+
+                    if ($action !== null) {
+                        $key = strtolower(rtrim($action['url'], '/'));
+                        $actions[$key] ??= $action;
+                    }
+
+                    if (count($actions) >= $maxActions) {
+                        break 3;
+                    }
+                }
+            }
+        }
+
+        return array_values($actions);
     }
 
     /**
@@ -208,6 +257,173 @@ PROMPT;
     private function definition(string $key): ?array
     {
         return collect($this->definitions())->first(fn (array $definition): bool => $definition['key'] === $key);
+    }
+
+    /**
+     * @param  class-string<Model>  $modelClass
+     * @param  array<string, mixed>  $settings
+     * @param  array<int, array<string, mixed>>  $definitions
+     * @return array<int, Model>
+     */
+    private function candidateRecordsForAnswer(string $modelClass, array $settings, array $definitions, string $answer): array
+    {
+        if (! is_subclass_of($modelClass, Model::class)) {
+            return [];
+        }
+
+        try {
+            /** @var Model $model */
+            $model = new $modelClass;
+            $columns = $this->matchColumns($model, $settings, $definitions);
+
+            /** @var Builder<Model> $query */
+            $query = $modelClass::query();
+
+            if (in_array(HasModelMindContext::class, class_uses_recursive($model), true)) {
+                $query = $model->modelMindContextQuery($query);
+            }
+
+            $terms = $this->matchTerms($answer);
+
+            if ($terms !== [] && $columns !== []) {
+                $query->where(function ($termQuery) use ($columns, $terms): void {
+                    foreach ($terms as $term) {
+                        foreach ($columns as $column) {
+                            $termQuery->orWhere($column, 'like', "%{$term}%");
+                        }
+                    }
+                });
+            }
+
+            foreach ((array) ($settings['order_by'] ?? []) as $column => $direction) {
+                if (is_string($column) && in_array(strtolower((string) $direction), ['asc', 'desc'], true)) {
+                    $query->orderBy($column, $direction);
+                }
+            }
+
+            return $query
+                ->limit(max(1, (int) config('model-mind.actions.inference_limit', 50)))
+                ->get()
+                ->all();
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     * @param  array<int, array<string, mixed>>  $definitions
+     * @return array<int, string>
+     */
+    private function matchColumns(Model $model, array $settings, array $definitions): array
+    {
+        try {
+            $tableColumns = Schema::getColumnListing($model->getTable());
+        } catch (Throwable) {
+            $tableColumns = [];
+        }
+
+        if ($tableColumns === []) {
+            return [];
+        }
+
+        $columns = [
+            ...(array) ($settings['search_columns'] ?? []),
+            'name',
+            'title',
+            'sku',
+            'slug',
+            'code',
+            'brand',
+            'category',
+            'label',
+            'order_number',
+            'reference',
+        ];
+
+        foreach ($definitions as $definition) {
+            $columns[] = $definition['label_column'] ?? null;
+
+            foreach ((array) ($definition['parameters'] ?? []) as $sourceColumn) {
+                $columns[] = $sourceColumn;
+            }
+
+            preg_match_all('/\{([A-Za-z_][A-Za-z0-9_]*)\}/', (string) ($definition['label_template'] ?? ''), $matches);
+            $columns = [...$columns, ...($matches[1] ?? [])];
+        }
+
+        return collect($columns)
+            ->filter(fn (mixed $column): bool => is_string($column) && in_array($column, $tableColumns, true))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function matchTerms(string $answer): array
+    {
+        return str($answer)
+            ->lower()
+            ->replaceMatches('/[^\pL\pN]+/u', ' ')
+            ->explode(' ')
+            ->map(fn (string $term): string => trim($term))
+            ->filter(fn (string $term): bool => mb_strlen($term) >= 3)
+            ->unique()
+            ->take(30)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     * @param  array<int, array<string, mixed>>  $definitions
+     */
+    private function answerMentionsRecord(string $normalizedAnswer, Model $record, array $settings, array $definitions): bool
+    {
+        foreach ($this->recordMatchPhrases($record, $settings, $definitions) as $phrase) {
+            $normalizedPhrase = $this->normalizeForMatching($phrase);
+
+            if (
+                mb_strlen($normalizedPhrase) >= 4
+                && ! preg_match('/^\d+(?:\s+\d+)*$/', $normalizedPhrase)
+                && str_contains(" {$normalizedAnswer} ", " {$normalizedPhrase} ")
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $settings
+     * @param  array<int, array<string, mixed>>  $definitions
+     * @return array<int, string>
+     */
+    private function recordMatchPhrases(Model $record, array $settings, array $definitions): array
+    {
+        $phrases = [];
+        $columns = $this->matchColumns($record, $settings, $definitions);
+
+        foreach ($definitions as $definition) {
+            $phrases[] = $this->labelForRecord($definition, $record);
+        }
+
+        foreach ($columns as $column) {
+            $value = $record->getAttribute($column);
+
+            if (is_scalar($value)) {
+                $phrases[] = $this->cleanLabel($value);
+            }
+        }
+
+        return collect($phrases)
+            ->filter(fn (mixed $phrase): bool => is_string($phrase) && filled($phrase))
+            ->unique()
+            ->values()
+            ->all();
     }
 
     /**
@@ -264,6 +480,37 @@ PROMPT;
             })
             ->reject(fn (string $source, string $name): bool => $name === '' || $source === '')
             ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $definition
+     * @return array<string, string>|null
+     */
+    private function routeParametersForRecord(array $definition, Model $record): ?array
+    {
+        $parameters = [];
+
+        foreach ((array) ($definition['parameters'] ?? []) as $name => $source) {
+            if (! is_string($name) || ! is_string($source)) {
+                return null;
+            }
+
+            $value = $record->getAttribute($source);
+
+            if (! is_scalar($value)) {
+                return null;
+            }
+
+            $value = $this->cleanParameterValue((string) $value);
+
+            if ($value === '') {
+                return null;
+            }
+
+            $parameters[$name] = $value;
+        }
+
+        return $parameters;
     }
 
     /**
@@ -442,5 +689,14 @@ PROMPT;
         $kind = is_scalar($kind) ? (string) $kind : 'route';
 
         return preg_match('/^[A-Za-z0-9_-]{1,40}$/', $kind) === 1 ? $kind : 'route';
+    }
+
+    private function normalizeForMatching(string $value): string
+    {
+        return str($value)
+            ->lower()
+            ->replaceMatches('/[^\pL\pN]+/u', ' ')
+            ->squish()
+            ->toString();
     }
 }

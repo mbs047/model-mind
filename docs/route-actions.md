@@ -72,6 +72,8 @@ When a row has enough data to build a route action, ModelMind adds a route token
 
 The AI is instructed to copy only approved route tokens. The server validates the key and parameter names, generates the URL with Laravel's `route()` helper, removes the token from the visible answer, and returns a button action.
 
+ModelMind also protects multilingual chats. If the AI answers in Arabic or another language and describes a configured record instead of copying the route token, the server can infer the approved route action from clearly mentioned enabled record labels. It still only creates buttons from your configured route actions.
+
 ## Button Labels
 
 Use `label` for a static button label:
@@ -106,6 +108,8 @@ Dynamic labels are resolved server-side from the configured model record, not tr
 ```env
 MODEL_MIND_MAX_ACTIONS=5
 MODEL_MIND_ROUTE_TOKEN=model_mind_route
+MODEL_MIND_INFER_ROUTE_ACTIONS=true
+MODEL_MIND_ROUTE_ACTION_INFERENCE_LIMIT=50
 ```
 
 ```php
@@ -113,7 +117,11 @@ MODEL_MIND_ROUTE_TOKEN=model_mind_route
     'max_actions' => 5,
     'route_token' => 'model_mind_route',
     'allow_label_override' => false,
+    'infer_from_answer' => true,
+    'inference_limit' => 50,
 ],
 ```
 
 Keep `allow_label_override` disabled unless you trust the model to choose button labels. With the default setting, labels always come from your config or model trait.
+
+Keep `infer_from_answer` enabled when your visitors may chat in multiple languages. Disable it only if you want links to appear exclusively when the AI copies exact route tokens.

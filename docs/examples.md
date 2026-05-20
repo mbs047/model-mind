@@ -115,6 +115,10 @@ MODEL_MIND_SCRIPTS_ASSET=vendor/model-mind/model-mind.js
 MODEL_MIND_RETRIEVAL_ENABLED=true
 MODEL_MIND_RETRIEVAL_LIMIT=8
 MODEL_MIND_CONTEXT_CACHE_SECONDS=600
+MODEL_MIND_SESSION_LIFETIME_MINUTES=120
+MODEL_MIND_DEFAULT_QUESTIONS="Which products are low in stock?|Show recent pending orders|What support policy should I follow?"
+MODEL_MIND_INFER_ROUTE_ACTIONS=true
+MODEL_MIND_ROUTE_ACTION_INFERENCE_LIMIT=50
 
 MODEL_MIND_LEARNING_ENABLED=true
 MODEL_MIND_LEARN_FROM_ASSISTANT_ANSWERS=true
@@ -134,7 +138,7 @@ MODEL_MIND_LEARNING_CONTEXT_LIMIT=12
     'fallback_answer' => 'I do not have that information in the enabled application context yet.',
     'tone_instructions' => 'Be concise, operational, and specific. Mention the source model when useful.',
     'language_instructions' => 'Answer in the same language as the latest visitor message unless explicitly asked otherwise.',
-    'quick_questions' => [
+    'default_questions' => [
         'Which products are low in stock?',
         'Show recent pending orders',
         'What support policy should I follow?',
@@ -170,6 +174,7 @@ MODEL_MIND_LEARNING_CONTEXT_LIMIT=12
     'message_characters' => 800,
     'summary_characters' => 2000,
     'context_cache_seconds' => (int) env('MODEL_MIND_CONTEXT_CACHE_SECONDS', 600),
+    'session_lifetime_minutes' => (int) env('MODEL_MIND_SESSION_LIFETIME_MINUTES', 120),
 ],
 
 'models' => [
@@ -297,6 +302,8 @@ MODEL_MIND_LEARNING_CONTEXT_LIMIT=12
     'max_actions' => 5,
     'route_token' => 'model_mind_route',
     'allow_label_override' => false,
+    'infer_from_answer' => true,
+    'inference_limit' => 50,
     'routes' => [
         'dashboard.open' => [
             'label' => 'Open dashboard',
@@ -491,9 +498,11 @@ php artisan model-mind:learn "Priority support customers receive a same-day resp
 
 - [Installation](installation.md)
 - [Blade Rendering](blade-rendering.md)
+- [Default Questions](default-questions.md)
 - [Models and Context](models.md)
 - [Named Route Actions](route-actions.md)
 - [Learning Memory](learning-memory.md)
+- [Sessions](sessions.md)
 - [Custom AI Providers](ai-providers.md)
 - [Customizing the Chat Modal](customizing-the-modal.md)
 - [Public Assets](public-assets.md)

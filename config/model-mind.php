@@ -1,5 +1,10 @@
 <?php
 
+$defaultQuestions = array_values(array_filter(array_map(
+    fn (string $question): string => trim($question),
+    explode('|', (string) env('MODEL_MIND_DEFAULT_QUESTIONS', 'What can you help with?|What data can you see?|How do I configure you?')),
+), fn (string $question): bool => $question !== ''));
+
 return [
     'assistant' => [
         'name' => env('MODEL_MIND_NAME', 'ModelMind'),
@@ -11,11 +16,8 @@ return [
         'fallback_answer' => env('MODEL_MIND_FALLBACK_ANSWER', 'I do not have that information in the enabled application context yet.'),
         'tone_instructions' => env('MODEL_MIND_TONE', 'Use a clear, concise, helpful professional tone.'),
         'language_instructions' => env('MODEL_MIND_LANGUAGE', 'Answer in the same language as the latest visitor message unless explicitly asked otherwise.'),
-        'quick_questions' => [
-            'What can you help with?',
-            'What data can you see?',
-            'How do I configure you?',
-        ],
+        'default_questions' => $defaultQuestions,
+        'quick_questions' => null,
     ],
 
     'provider' => [
@@ -47,6 +49,7 @@ return [
         'message_characters' => (int) env('MODEL_MIND_MESSAGE_CHARACTERS', 800),
         'summary_characters' => (int) env('MODEL_MIND_SUMMARY_CHARACTERS', 2000),
         'context_cache_seconds' => (int) env('MODEL_MIND_CONTEXT_CACHE_SECONDS', 600),
+        'session_lifetime_minutes' => (int) env('MODEL_MIND_SESSION_LIFETIME_MINUTES', 120),
     ],
 
     'models' => [
@@ -194,6 +197,8 @@ return [
         'max_actions' => (int) env('MODEL_MIND_MAX_ACTIONS', 5),
         'route_token' => env('MODEL_MIND_ROUTE_TOKEN', 'model_mind_route'),
         'allow_label_override' => false,
+        'infer_from_answer' => filter_var(env('MODEL_MIND_INFER_ROUTE_ACTIONS', true), FILTER_VALIDATE_BOOL),
+        'inference_limit' => (int) env('MODEL_MIND_ROUTE_ACTION_INFERENCE_LIMIT', 50),
         'routes' => [
             /*
             'products.view' => [
