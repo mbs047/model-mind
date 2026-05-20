@@ -64,6 +64,13 @@ class ModelMindSession extends Model
         ])->save();
     }
 
+    public function markInteraction(): void
+    {
+        $this->forceFill([
+            'last_interaction_at' => now(),
+        ])->save();
+    }
+
     public function compactForPrompt(): void
     {
         $recentLimit = (int) config('model-mind.memory.recent_messages', 12);

@@ -29,6 +29,8 @@ MODEL_MIND_ANALYTICS_SUMMARY_DAYS=7
 
 The analytics writer is fail-safe. If an upgraded application has not added the events table yet, chat still works and analytics writes are skipped.
 
+Analytics writes are dispatched through the [Background Queue](background-queue.md) so they do not slow down the chat response.
+
 ## Command
 
 Use the built-in command for quick dashboard data:

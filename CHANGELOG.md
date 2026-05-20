@@ -6,12 +6,17 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+## v1.0.15 - 2026-05-21
+
 ### Added
 
 - Laravel extension events for sent messages, generated answers, submitted feedback, resolved actions, and learned memory.
 - Events and hooks documentation with listener examples for dashboards, audits, queues, and integrations.
 - Current page context support so users can ask about the product, record, text selection, or content visible on the page.
 - Friendly comments across the published config file explaining each major configurable block and expected values.
+- Queueable background jobs for conversation compaction, assistant-answer learning, liked-answer learning, analytics writes, feedback analytics, and action-click analytics.
+- Background work configuration with `sync`, `after_response`, and `queue` modes.
+- Background queue documentation for fast chat responses and production workers.
 
 ### Changed
 

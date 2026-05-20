@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Mbs\ModelMind\Contracts\ModelMindProvider;
 use Mbs\ModelMind\Events\ActionResolved;
@@ -18,6 +19,9 @@ use Mbs\ModelMind\Events\AnswerGenerated;
 use Mbs\ModelMind\Events\FeedbackSubmitted;
 use Mbs\ModelMind\Events\MemoryLearned;
 use Mbs\ModelMind\Events\MessageSent;
+use Mbs\ModelMind\Jobs\CompactModelMindSession;
+use Mbs\ModelMind\Jobs\RecordModelMindChatCompleted;
+use Mbs\ModelMind\Jobs\RememberModelMindAssistantAnswer;
 use Mbs\ModelMind\Models\ModelMindEvent;
 use Mbs\ModelMind\Models\ModelMindMemory;
 use Mbs\ModelMind\Models\ModelMindMessage;
@@ -47,6 +51,7 @@ class ModelMindPackageTest extends TestCase
         config()->set('model-mind.provider.organization', 'org-test');
         config()->set('model-mind.provider.max_output_tokens', 800);
         config()->set('model-mind.provider.reasoning_effort', 'minimal');
+        config()->set('model-mind.background.mode', 'sync');
         config()->set('model-mind.memory.context_cache_seconds', 0);
         config()->set('model-mind.models', [
             KnowledgeEntry::class => [
@@ -753,6 +758,39 @@ class ModelMindPackageTest extends TestCase
             'input_tokens' => 42,
             'output_tokens' => 18,
             'total_tokens' => 60,
+        ]);
+    }
+
+    public function test_chat_background_work_can_be_queued_after_the_response_path(): void
+    {
+        config()->set('model-mind.background.mode', 'queue');
+        Queue::fake();
+
+        Http::fake([
+            'api.openai.com/v1/responses' => fn () => Http::response([
+                'output_text' => 'Queued learning keeps the chat response fast while memory and analytics run later.',
+                'usage' => [
+                    'input_tokens' => 15,
+                    'output_tokens' => 12,
+                    'total_tokens' => 27,
+                ],
+            ]),
+        ]);
+
+        $this->postJson(route('model-mind.chat'), [
+            'question' => 'Can background work be queued?',
+        ])->assertOk();
+
+        Queue::assertPushed(RecordModelMindChatCompleted::class, fn (RecordModelMindChatCompleted $job): bool => $job->providerMetadata['total_tokens'] === 27
+            && $job->context['answer_characters'] === 82);
+        Queue::assertPushed(RememberModelMindAssistantAnswer::class, fn (RememberModelMindAssistantAnswer $job): bool => $job->question === 'Can background work be queued?');
+        Queue::assertPushed(CompactModelMindSession::class);
+
+        $this->assertDatabaseMissing('model_mind_events', [
+            'type' => ModelMindEvent::TYPE_CHAT_COMPLETED,
+        ]);
+        $this->assertDatabaseMissing('model_mind_memories', [
+            'source' => 'assistant_answer',
         ]);
     }
 

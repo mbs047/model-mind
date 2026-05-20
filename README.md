@@ -119,6 +119,8 @@ MODEL_MIND_API_PREFIX=api/model-mind
 MODEL_MIND_DEFAULT_QUESTIONS="What can you help with?|What data can you see?|How do I configure you?"
 MODEL_MIND_SESSION_LIFETIME_MINUTES=120
 MODEL_MIND_STREAMING=false
+MODEL_MIND_BACKGROUND_MODE=after_response
+MODEL_MIND_BACKGROUND_QUEUE=model-mind
 MODEL_MIND_CONTEXT_CACHE_SECONDS=600
 MODEL_MIND_RETRIEVAL_ENABLED=true
 MODEL_MIND_RETRIEVAL_FUZZY=true
@@ -137,7 +139,7 @@ Supported widget positions are `bottom-right`, `bottom-left`, `bottom-center`, `
 
 ## Full Documentation
 
-Read the documentation index in [docs/README.md](docs/README.md). Start with [docs/examples.md](docs/examples.md) for simple and advanced copyable setups. Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, headless API mode, streaming responses, provider drivers, model configuration, multilingual answers, retrieval, route actions, source citations, authorization, security, learning memory, feedback, current page context, analytics, events and hooks, table prefixes, routes, performance, and testing.
+Read the documentation index in [docs/README.md](docs/README.md). Start with [docs/examples.md](docs/examples.md) for simple and advanced copyable setups. Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, headless API mode, streaming responses, provider drivers, model configuration, multilingual answers, retrieval, route actions, source citations, authorization, security, learning memory, feedback, current page context, analytics, events and hooks, background queues, table prefixes, routes, performance, and testing.
 
 For starter configuration by application type, run:
 

@@ -132,6 +132,8 @@ MODEL_MIND_RETRIEVAL_CANDIDATE_LIMIT=60
 MODEL_MIND_RETRIEVAL_FUZZY=true
 MODEL_MIND_RETRIEVAL_MULTILINGUAL=true
 MODEL_MIND_CONTEXT_CACHE_SECONDS=600
+MODEL_MIND_BACKGROUND_MODE=after_response
+MODEL_MIND_BACKGROUND_QUEUE=model-mind
 MODEL_MIND_SESSION_LIFETIME_MINUTES=120
 MODEL_MIND_DEFAULT_QUESTIONS="Which products are low in stock?|Show recent pending orders|What support policy should I follow?"
 MODEL_MIND_INFER_ROUTE_ACTIONS=true
@@ -335,6 +337,13 @@ MODEL_MIND_LEARNING_CONTEXT_LIMIT=12
 'assets' => [
     'styles_path' => env('MODEL_MIND_STYLES_ASSET', 'vendor/model-mind/model-mind.css'),
     'scripts_path' => env('MODEL_MIND_SCRIPTS_ASSET', 'vendor/model-mind/model-mind.js'),
+],
+
+'background' => [
+    'mode' => env('MODEL_MIND_BACKGROUND_MODE', 'after_response'),
+    'connection' => env('MODEL_MIND_BACKGROUND_CONNECTION'),
+    'queue' => env('MODEL_MIND_BACKGROUND_QUEUE', 'model-mind'),
+    'after_commit' => true,
 ],
 
 'features' => [

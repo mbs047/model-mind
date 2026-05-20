@@ -33,3 +33,5 @@ php artisan model-mind:learn "Warranty coverage lasts one year." --title="Warran
 ```
 
 Learning has its own sensitive-pattern filter so API keys, tokens, secrets, and passwords are not stored as memories.
+
+Assistant-answer and liked-answer learning runs through the [Background Queue](background-queue.md). Manual `model-mind:learn` commands still write immediately because they are already outside the chat request path.

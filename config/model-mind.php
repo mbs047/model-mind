@@ -521,6 +521,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Background Work
+    |--------------------------------------------------------------------------
+    |
+    | ModelMind can move non-critical work away from the chat response path:
+    | conversation compaction, learned memories, and analytics writes. mode can
+    | be "after_response" (fast default, no worker required), "queue" (real
+    | queue worker), or "sync" (useful for tests and tiny local apps).
+    |
+    */
+    'background' => [
+        'mode' => env('MODEL_MIND_BACKGROUND_MODE', 'after_response'),
+        'connection' => env('MODEL_MIND_BACKGROUND_CONNECTION'),
+        'queue' => env('MODEL_MIND_BACKGROUND_QUEUE', 'model-mind'),
+        'after_commit' => filter_var(env('MODEL_MIND_BACKGROUND_AFTER_COMMIT', true), FILTER_VALIDATE_BOOL),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Eloquent Models Exposed to ModelMind
     |--------------------------------------------------------------------------
     |

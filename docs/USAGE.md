@@ -34,6 +34,7 @@ This page is the compact starting point for ModelMind. Each major feature now ha
 - [Current Page Context](page-context.md)
 - [Usage Analytics](analytics.md)
 - [Events and Hooks](events-and-hooks.md)
+- [Background Queue](background-queue.md)
 - [Sessions](sessions.md)
 - [Multilingual Answers](multilingual.md)
 - [Streaming Responses](streaming.md)

@@ -19,9 +19,8 @@ use Mbs\ModelMind\Http\Requests\TrackModelMindActionClickRequest;
 use Mbs\ModelMind\Models\ModelMindMessage;
 use Mbs\ModelMind\Models\ModelMindSession;
 use Mbs\ModelMind\Support\Actions\ActionExtractor;
-use Mbs\ModelMind\Support\Analytics\ModelMindAnalytics;
+use Mbs\ModelMind\Support\Background\ModelMindBackgroundTasks;
 use Mbs\ModelMind\Support\Citations\SourceCitationExtractor;
-use Mbs\ModelMind\Support\Learning\LearningRepository;
 use Mbs\ModelMind\Support\PageContext\PageContextConfig;
 use Mbs\ModelMind\Support\PageContext\PageContextSanitizer;
 use Mbs\ModelMind\Support\PromptBuilder;
@@ -76,8 +75,7 @@ class ModelMindController extends Controller
         PromptBuilder $promptBuilder,
         ActionExtractor $actions,
         SourceCitationExtractor $citations,
-        LearningRepository $learning,
-        ModelMindAnalytics $analytics,
+        ModelMindBackgroundTasks $background,
         PageContextSanitizer $pageContextSanitizer,
     ): JsonResponse {
         [$session, $question, $userMessage, $pageContext] = $this->beginAssistantTurn($request, $pageContextSanitizer);
@@ -92,8 +90,8 @@ class ModelMindController extends Controller
             ));
         } catch (RuntimeException $exception) {
             report($exception);
-            $session->compactForPrompt();
-            $analytics->recordChatFailed($session, $userMessage, $exception, $this->elapsedMilliseconds($startedAt));
+            $background->recordChatFailed($session, $userMessage, $exception, $this->elapsedMilliseconds($startedAt));
+            $background->compactSession($session);
 
             return response()->json([
                 'message' => 'ModelMind is unavailable right now. Please try again soon.',
@@ -107,8 +105,7 @@ class ModelMindController extends Controller
             response: $response,
             actions: $actions,
             citations: $citations,
-            learning: $learning,
-            analytics: $analytics,
+            background: $background,
             latencyMs: $this->elapsedMilliseconds($startedAt),
         );
 
@@ -129,8 +126,7 @@ class ModelMindController extends Controller
         PromptBuilder $promptBuilder,
         ActionExtractor $actions,
         SourceCitationExtractor $citations,
-        LearningRepository $learning,
-        ModelMindAnalytics $analytics,
+        ModelMindBackgroundTasks $background,
         PageContextSanitizer $pageContextSanitizer,
     ): StreamedResponse {
         [$session, $question, $userMessage, $pageContext] = $this->beginAssistantTurn($request, $pageContextSanitizer);
@@ -141,7 +137,7 @@ class ModelMindController extends Controller
             pageContext: $pageContext,
         );
 
-        return response()->stream(function () use ($provider, $modelMindRequest, $session, $userMessage, $question, $actions, $citations, $learning, $analytics): void {
+        return response()->stream(function () use ($provider, $modelMindRequest, $session, $userMessage, $question, $actions, $citations, $background): void {
             $this->sendStreamEvent('ready', [
                 'session_id' => $session->uuid,
                 'expires_at' => $this->sessionExpiresAt($session),
@@ -153,8 +149,8 @@ class ModelMindController extends Controller
                 $response = $this->streamProviderResponse($provider, $modelMindRequest);
             } catch (RuntimeException $exception) {
                 report($exception);
-                $session->compactForPrompt();
-                $analytics->recordChatFailed($session, $userMessage, $exception, $this->elapsedMilliseconds($startedAt));
+                $background->recordChatFailed($session, $userMessage, $exception, $this->elapsedMilliseconds($startedAt));
+                $background->compactSession($session);
 
                 $this->sendStreamEvent('error', [
                     'message' => 'ModelMind is unavailable right now. Please try again soon.',
@@ -170,8 +166,7 @@ class ModelMindController extends Controller
                 response: $response,
                 actions: $actions,
                 citations: $citations,
-                learning: $learning,
-                analytics: $analytics,
+                background: $background,
                 latencyMs: $this->elapsedMilliseconds($startedAt),
             );
 
@@ -211,7 +206,7 @@ class ModelMindController extends Controller
             'transport' => $request->expectsJson() ? 'json' : 'web',
             'page_context' => $pageContext,
         ]));
-        $session->compactForPrompt();
+        $session->markInteraction();
 
         return [$session, $question, $userMessage, $pageContext];
     }
@@ -225,8 +220,7 @@ class ModelMindController extends Controller
         ModelMindResponseData $response,
         ActionExtractor $actions,
         SourceCitationExtractor $citations,
-        LearningRepository $learning,
-        ModelMindAnalytics $analytics,
+        ModelMindBackgroundTasks $background,
         int $latencyMs,
     ): array {
         $cited = $citations->prepare($response->answer, $question);
@@ -250,17 +244,13 @@ class ModelMindController extends Controller
             providerMetadata: $response->metadata,
             latencyMs: $latencyMs,
         ));
-        $analytics->recordChatCompleted($session, $assistantMessage, $response->metadata, $latencyMs, [
+        $background->recordChatCompleted($session, $assistantMessage, $response->metadata, $latencyMs, [
             'actions_count' => count($prepared['actions']),
             'citations_count' => count($cited['citations']),
             'answer_characters' => mb_strlen($prepared['answer']),
         ]);
-        $learning->rememberAssistantAnswer($prepared['answer'], [
-            'message_id' => $assistantMessage->uuid,
-            'session_id' => $session->uuid,
-            'question' => $question,
-        ]);
-        $session->compactForPrompt();
+        $background->rememberAssistantAnswer($assistantMessage, $question);
+        $background->compactSession($session);
 
         return [
             'answer' => $prepared['answer'],
@@ -398,7 +388,7 @@ class ModelMindController extends Controller
         ]);
     }
 
-    public function feedback(FeedbackModelMindMessageRequest $request, string $message, ModelMindAnalytics $analytics): JsonResponse
+    public function feedback(FeedbackModelMindMessageRequest $request, string $message, ModelMindBackgroundTasks $background): JsonResponse
     {
         $assistantMessage = ModelMindMessage::query()
             ->where('uuid', $message)
@@ -415,13 +405,14 @@ class ModelMindController extends Controller
             'feedback_at' => now(),
         ])->save();
 
-        $assistantMessage->session?->compactForPrompt();
+        $assistantMessage->session?->markInteraction();
 
         if ($assistantMessage->feedback === ModelMindMessage::FEEDBACK_LIKED) {
-            app(LearningRepository::class)->rememberLikedAnswer($assistantMessage);
+            $background->rememberLikedAnswer($assistantMessage);
         }
 
-        $analytics->recordFeedback($assistantMessage, $request);
+        $background->recordFeedback($assistantMessage, $request);
+        $background->compactSession($assistantMessage->session);
         event(new FeedbackSubmitted(
             message: $assistantMessage,
             feedback: (string) $assistantMessage->feedback,
@@ -433,7 +424,7 @@ class ModelMindController extends Controller
         ]);
     }
 
-    public function actionClick(TrackModelMindActionClickRequest $request, ModelMindAnalytics $analytics): JsonResponse
+    public function actionClick(TrackModelMindActionClickRequest $request, ModelMindBackgroundTasks $background): JsonResponse
     {
         $session = $this->resolveExistingSession($request->validated('session_id'), $request);
         $messageId = $request->validated('message_id');
@@ -449,7 +440,7 @@ class ModelMindController extends Controller
             abort(404);
         }
 
-        $analytics->recordActionClick($session, $message, $request->validated(), $request);
+        $background->recordActionClick($session, $message, $request->validated(), $request);
 
         return response()->json(['tracked' => true]);
     }

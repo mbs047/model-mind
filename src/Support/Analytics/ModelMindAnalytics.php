@@ -42,6 +42,16 @@ class ModelMindAnalytics
         Throwable $exception,
         int $latencyMs,
     ): ?ModelMindEvent {
+        return $this->recordChatFailedPayload($session, $message, $exception::class, $exception->getMessage(), $latencyMs);
+    }
+
+    public function recordChatFailedPayload(
+        ModelMindSession $session,
+        ModelMindMessage $message,
+        string $errorClass,
+        string $errorMessage,
+        int $latencyMs,
+    ): ?ModelMindEvent {
         return $this->record([
             'model_mind_session_id' => $session->getKey(),
             'model_mind_message_id' => $message->getKey(),
@@ -50,13 +60,21 @@ class ModelMindAnalytics
             'provider_model' => $this->configuredProviderModel(),
             'latency_ms' => max(0, $latencyMs),
             'metadata' => [
-                'error_class' => $exception::class,
-                'error_message' => str($exception->getMessage())->squish()->limit(500, '')->toString(),
+                'error_class' => str($errorClass)->squish()->limit(200, '')->toString(),
+                'error_message' => str($errorMessage)->squish()->limit(500, '')->toString(),
             ],
         ]);
     }
 
     public function recordFeedback(ModelMindMessage $message, ?Request $request = null): ?ModelMindEvent
+    {
+        return $this->recordFeedbackPayload($message, $this->requestMetadata($request));
+    }
+
+    /**
+     * @param  array<string, mixed>  $requestMetadata
+     */
+    public function recordFeedbackPayload(ModelMindMessage $message, array $requestMetadata = []): ?ModelMindEvent
     {
         return $this->record([
             'model_mind_session_id' => $message->session?->getKey(),
@@ -65,7 +83,7 @@ class ModelMindAnalytics
             'metadata' => [
                 'feedback' => $message->feedback,
                 'note_present' => filled($message->feedback_note),
-                ...$this->requestMetadata($request),
+                ...$this->cleanRequestMetadata($requestMetadata),
             ],
         ]);
     }
@@ -79,6 +97,19 @@ class ModelMindAnalytics
         array $payload,
         ?Request $request = null,
     ): ?ModelMindEvent {
+        return $this->recordActionClickPayload($session, $message, $payload, $this->requestMetadata($request));
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $requestMetadata
+     */
+    public function recordActionClickPayload(
+        ?ModelMindSession $session,
+        ?ModelMindMessage $message,
+        array $payload,
+        array $requestMetadata = [],
+    ): ?ModelMindEvent {
         return $this->record([
             'model_mind_session_id' => $session?->getKey() ?? $message?->session?->getKey(),
             'model_mind_message_id' => $message?->getKey(),
@@ -89,7 +120,7 @@ class ModelMindAnalytics
                 'kind' => $this->cleanScalar($payload['kind'] ?? null, 80),
                 'source' => $this->cleanScalar($payload['source'] ?? null, 40),
                 'index' => is_numeric($payload['index'] ?? null) ? (int) $payload['index'] : null,
-                ...$this->requestMetadata($request),
+                ...$this->cleanRequestMetadata($requestMetadata),
             ],
         ]);
     }
@@ -259,6 +290,18 @@ class ModelMindAnalytics
             'ip_address' => $request->ip(),
             'user_agent' => str($request->userAgent() ?? '')->limit(500, '')->toString(),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $metadata
+     * @return array<string, string|null>
+     */
+    private function cleanRequestMetadata(array $metadata): array
+    {
+        return array_filter([
+            'ip_address' => $this->cleanScalar($metadata['ip_address'] ?? null, 45),
+            'user_agent' => $this->cleanScalar($metadata['user_agent'] ?? null, 500),
+        ], fn (?string $value): bool => $value !== null);
     }
 
     /**
