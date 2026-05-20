@@ -79,6 +79,93 @@ class ModelContextBuilder
     }
 
     /**
+     * @param  class-string<Model>  $modelClass
+     * @param  array<string, mixed>  $settings
+     * @return array<string, mixed>
+     */
+    public function buildForQuestion(string $modelClass, array $settings, string $question): array
+    {
+        if (($settings['enabled'] ?? true) === false || ! is_subclass_of($modelClass, Model::class)) {
+            return [];
+        }
+
+        /** @var Model $model */
+        $model = new $modelClass;
+        $columns = $this->discoverer->columns($model, $settings);
+        $terms = $this->searchTerms($question);
+        $searchColumns = $this->searchColumns($columns, $settings);
+
+        if ($columns === [] || $terms === [] || $searchColumns === []) {
+            return [];
+        }
+
+        try {
+            /** @var Builder<Model> $query */
+            $query = $this->newContextQuery($modelClass, $model, $columns, $settings);
+
+            foreach ($terms as $term) {
+                $query->where(function (Builder $termQuery) use ($searchColumns, $term): void {
+                    foreach ($searchColumns as $column) {
+                        $termQuery->orWhere($column, 'like', "%{$term}%");
+                    }
+                });
+            }
+
+            $rows = $query
+                ->limit(max(1, (int) config('model-mind.retrieval.limit', 8)))
+                ->get()
+                ->map(fn (Model $record): array => $this->recordContext($record, $columns, $settings))
+                ->filter()
+                ->values()
+                ->all();
+        } catch (QueryException) {
+            $rows = [];
+        }
+
+        if ($rows === []) {
+            return [];
+        }
+
+        return [
+            'label' => $settings['label'] ?? $this->traitLabel($model) ?? class_basename($modelClass),
+            'description' => $settings['description'] ?? $this->traitDescription($model),
+            'model' => $modelClass,
+            'matched_terms' => $terms,
+            'rows' => $rows,
+        ];
+    }
+
+    /**
+     * @param  class-string<Model>  $modelClass
+     * @param  array<int, string>  $columns
+     * @param  array<string, mixed>  $settings
+     * @return Builder<Model>
+     */
+    private function newContextQuery(string $modelClass, Model $model, array $columns, array $settings): Builder
+    {
+        /** @var Builder<Model> $query */
+        $query = $modelClass::query()->select($columns);
+
+        foreach ((array) ($settings['relations'] ?? $this->traitRelations($model)) as $relation) {
+            if (is_string($relation) && filled($relation)) {
+                $query->with($relation);
+            }
+        }
+
+        foreach ((array) ($settings['order_by'] ?? []) as $column => $direction) {
+            if (is_string($column) && in_array(strtolower((string) $direction), ['asc', 'desc'], true)) {
+                $query->orderBy($column, $direction);
+            }
+        }
+
+        if (in_array(HasModelMindContext::class, class_uses_recursive($model), true)) {
+            $query = $model->modelMindContextQuery($query);
+        }
+
+        return $query;
+    }
+
+    /**
      * @param  array<int, string>  $columns
      * @param  array<string, mixed>  $settings
      * @return array<string, mixed>
@@ -99,6 +186,65 @@ class ModelContextBuilder
             ->all();
 
         return $this->withRouteActions($record, $settings, $context);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function searchTerms(string $question): array
+    {
+        $stopWords = collect((array) config('model-mind.retrieval.stop_words', []))
+            ->filter(fn (mixed $word): bool => is_string($word))
+            ->map(fn (string $word): string => str($word)->lower()->toString())
+            ->all();
+        $minLength = max(1, (int) config('model-mind.retrieval.min_term_length', 2));
+        $maxTerms = max(1, (int) config('model-mind.retrieval.max_terms', 8));
+
+        return str($question)
+            ->lower()
+            ->replaceMatches('/[^\pL\pN]+/u', ' ')
+            ->explode(' ')
+            ->map(fn (string $term): string => trim($term))
+            ->filter(fn (string $term): bool => $term !== ''
+                && mb_strlen($term) >= $minLength
+                && ! in_array($term, $stopWords, true))
+            ->unique()
+            ->take($maxTerms)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, string>  $columns
+     * @param  array<string, mixed>  $settings
+     * @return array<int, string>
+     */
+    private function searchColumns(array $columns, array $settings): array
+    {
+        $configuredColumns = array_values(array_filter((array) ($settings['search_columns'] ?? []), 'is_string'));
+        $preferredColumns = $configuredColumns !== []
+            ? $configuredColumns
+            : [
+                'name',
+                'title',
+                'sku',
+                'slug',
+                'brand',
+                'category',
+                'label',
+                'summary',
+                'short_description',
+                'description',
+                'body',
+                'image_label',
+                'color_name',
+            ];
+
+        return collect($preferredColumns)
+            ->filter(fn (string $column): bool => in_array($column, $columns, true))
+            ->filter(fn (string $column): bool => preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $column) === 1)
+            ->values()
+            ->all();
     }
 
     /**

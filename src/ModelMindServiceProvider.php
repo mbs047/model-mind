@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Mbs\ModelMind\Console\Commands\ClearModelMindContextCommand;
 use Mbs\ModelMind\Console\Commands\InspectModelMindContextCommand;
 use Mbs\ModelMind\Console\Commands\InstallModelMindCommand;
 use Mbs\ModelMind\Console\Commands\LearnModelMindKnowledgeCommand;
@@ -99,6 +100,7 @@ class ModelMindServiceProvider extends ServiceProvider
         }
 
         $this->commands([
+            ClearModelMindContextCommand::class,
             InstallModelMindCommand::class,
             InspectModelMindContextCommand::class,
             LearnModelMindKnowledgeCommand::class,

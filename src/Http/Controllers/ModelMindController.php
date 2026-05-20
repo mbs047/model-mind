@@ -39,7 +39,7 @@ class ModelMindController extends Controller
         try {
             $response = $provider->answer(new ModelMindRequestData(
                 question: $question,
-                instructions: $promptBuilder->instructions(),
+                instructions: $promptBuilder->instructions($question),
                 session: $session,
             ));
         } catch (RuntimeException $exception) {

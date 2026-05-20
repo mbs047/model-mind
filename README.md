@@ -99,6 +99,7 @@ MODEL_MIND_OFFSET=1.25rem
 MODEL_MIND_Z_INDEX=9999
 MODEL_MIND_TABLE_PREFIX=model_mind_
 MODEL_MIND_CONTEXT_CACHE_SECONDS=600
+MODEL_MIND_RETRIEVAL_ENABLED=true
 MODEL_MIND_MAX_OUTPUT_TOKENS=450
 MODEL_MIND_USE_PUBLIC_ASSETS=false
 ```
@@ -107,7 +108,7 @@ Supported widget positions are `bottom-right`, `bottom-left`, `bottom-center`, `
 
 ## Full Documentation
 
-Read the documentation index in [docs/README.md](docs/README.md). Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, model configuration, route actions, security, learning memory, feedback, table prefixes, providers, routes, performance, and testing.
+Read the documentation index in [docs/README.md](docs/README.md). Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, model configuration, retrieval, route actions, security, learning memory, feedback, table prefixes, providers, routes, performance, and testing.
 
 For custom UI work, read [docs/customizing-the-modal.md](docs/customizing-the-modal.md). You can publish the default Blade views, or point ModelMind to a completely new modal, styles, and script from config.
 

@@ -7,6 +7,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Mbs\ModelMind\Models\ModelMindMemory;
@@ -161,6 +162,16 @@ class ModelMindPackageTest extends TestCase
         $this->assertStringContainsString('Would publish [model-mind-assets].', Artisan::output());
     }
 
+    public function test_context_cache_can_be_cleared(): void
+    {
+        Cache::put('model-mind.context.v1', ['stale' => true], 600);
+
+        Artisan::call('model-mind:clear-context');
+
+        $this->assertFalse(Cache::has('model-mind.context.v1'));
+        $this->assertStringContainsString('ModelMind context cache cleared.', Artisan::output());
+    }
+
     public function test_package_uses_a_single_model_mind_migration_file(): void
     {
         $migrations = glob(__DIR__.'/../../database/migrations/*model_mind*.php') ?: [];
@@ -259,6 +270,48 @@ class ModelMindPackageTest extends TestCase
             'title' => 'Assistant answer',
             'content' => 'Support replies happen within one business day. Read more.',
         ]);
+    }
+
+    public function test_chat_endpoint_adds_question_relevant_records_outside_static_context(): void
+    {
+        config()->set('model-mind.security.max_rows_per_model', 1);
+        config()->set('model-mind.retrieval.limit', 3);
+
+        KnowledgeEntry::query()->create([
+            'title' => 'Generic onboarding',
+            'body' => 'This record is first in the static context.',
+            'is_public' => true,
+        ]);
+        $entry = KnowledgeEntry::query()->create([
+            'title' => 'Samsung Galaxy S24 Ultra',
+            'body' => 'Large-screen Android flagship with S Pen, AI tools, and advanced camera zoom.',
+            'is_public' => true,
+        ]);
+
+        Http::fake([
+            'api.openai.com/v1/responses' => function (Request $request) use ($entry) {
+                $instructions = (string) $request['instructions'];
+
+                $this->assertStringContainsString('question_context', $instructions);
+                $this->assertStringContainsString('Samsung Galaxy S24 Ultra', $instructions);
+                $this->assertStringContainsString('Large-screen Android flagship', $instructions);
+                $this->assertStringContainsString("[[model_mind_route key=\\\"knowledge.view\\\" entry=\\\"{$entry->id}\\\"]]", $instructions);
+
+                return Http::response([
+                    'output_text' => "Samsung Galaxy S24 Ultra is available in the enabled context.\n[[model_mind_route key=\"knowledge.view\" entry=\"{$entry->id}\"]]",
+                ]);
+            },
+        ]);
+
+        $response = $this->postJson(route('model-mind.chat'), [
+            'question' => 'samsung s24?',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('answer', 'Samsung Galaxy S24 Ultra is available in the enabled context.')
+            ->assertJsonPath('actions.0.kind', 'route')
+            ->assertJsonPath('actions.0.url', url("/knowledge/{$entry->id}"));
     }
 
     public function test_chat_endpoint_resolves_whitelisted_named_route_actions(): void

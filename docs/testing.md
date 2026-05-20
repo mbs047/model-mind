@@ -4,6 +4,7 @@ After installation in an app, test these paths:
 
 ```bash
 php artisan model-mind:inspect-context
+php artisan model-mind:clear-context
 php artisan route:list --name=model-mind
 php artisan test
 ```
@@ -17,6 +18,7 @@ php artisan test
 - Check light and dark appearances.
 - Confirm hidden or sensitive fields never appear.
 - Confirm named route actions open the expected pages.
+- Ask for a record outside the static context window and confirm question-aware retrieval finds it.
 
 ## Custom Design Checks
 

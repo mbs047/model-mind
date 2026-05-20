@@ -9,6 +9,8 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 ### Added
 
 - Public asset publishing for the default CSS and JavaScript through `model-mind:publish-assets`, the `model-mind-assets` tag, and `model-mind:install --assets`.
+- Question-aware model retrieval so answers can include relevant enabled records that are outside the cached static context window.
+- `model-mind:clear-context` command for clearing the cached application context after data or config changes.
 
 ### Changed
 

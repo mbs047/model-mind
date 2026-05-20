@@ -16,7 +16,38 @@ class ContextRegistry
     /**
      * @return array<string, mixed>
      */
-    public function context(): array
+    public function context(?string $question = null): array
+    {
+        $context = $this->baseContext();
+        $questionContext = $this->questionContext($question);
+
+        if ($questionContext === []) {
+            return $context;
+        }
+
+        $sourcePolicy = $context['source_policy'] ?? config('model-mind.prompt.source_policy');
+        unset($context['source_policy']);
+
+        return [
+            'source_policy' => $sourcePolicy,
+            'question_context' => $questionContext,
+            ...$context,
+        ];
+    }
+
+    public function toPrompt(?string $question = null): string
+    {
+        $encoded = json_encode($this->context($question), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        return str($encoded ?: '{}')
+            ->limit((int) config('model-mind.security.max_context_characters', 24000), '')
+            ->toString();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function baseContext(): array
     {
         $seconds = (int) config('model-mind.memory.context_cache_seconds', 300);
 
@@ -27,13 +58,48 @@ class ContextRegistry
         return Cache::remember('model-mind.context.v1', $seconds, fn (): array => $this->uncachedContext());
     }
 
-    public function toPrompt(): string
+    /**
+     * @return array<string, mixed>
+     */
+    private function questionContext(?string $question): array
     {
-        $encoded = json_encode($this->context(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if (! (bool) config('model-mind.retrieval.enabled', true) || ! is_string($question) || blank($question)) {
+            return [];
+        }
 
-        return str($encoded ?: '{}')
-            ->limit((int) config('model-mind.security.max_context_characters', 24000), '')
-            ->toString();
+        $models = config('model-mind.models', []);
+
+        if (! is_array($models)) {
+            return [];
+        }
+
+        $contexts = [];
+
+        foreach ($models as $modelClass => $settings) {
+            if (is_int($modelClass) && is_string($settings)) {
+                $modelClass = $settings;
+                $settings = [];
+            }
+
+            if (! is_string($modelClass) || ! is_array($settings)) {
+                continue;
+            }
+
+            $context = $this->modelContextBuilder->buildForQuestion($modelClass, $settings, $question);
+
+            if ($context !== []) {
+                $contexts[] = $context;
+            }
+        }
+
+        if ($contexts === []) {
+            return [];
+        }
+
+        return [
+            'question' => str($question)->squish()->limit(300, '')->toString(),
+            'models' => $contexts,
+        ];
     }
 
     /**

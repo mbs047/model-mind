@@ -14,7 +14,7 @@ class PromptBuilder
         private readonly RouteActionRegistry $routeActions,
     ) {}
 
-    public function instructions(): string
+    public function instructions(?string $question = null): string
     {
         $assistantName = $this->stringConfig('model-mind.assistant.name', 'ModelMind');
         $fallbackAnswer = $this->stringConfig('model-mind.assistant.fallback_answer', 'I do not have that information in the enabled application context yet.');
@@ -41,7 +41,7 @@ Rules:
 
 ENABLED APPLICATION CONTEXT:
 %s
-PROMPT, $assistantName, $fallbackAnswer, $toneInstructions, $languageInstructions, $extraInstructions, $routeInstructions, $this->contextRegistry->toPrompt());
+PROMPT, $assistantName, $fallbackAnswer, $toneInstructions, $languageInstructions, $extraInstructions, $routeInstructions, $this->contextRegistry->toPrompt($question));
     }
 
     public function input(string $question, ModelMindSession $session): string

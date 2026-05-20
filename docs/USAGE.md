@@ -18,6 +18,7 @@ This page is the compact starting point for ModelMind. Each major feature now ha
 - [UI, Themes, and Positioning](ui-themes-and-positioning.md)
 - [Models and Context](models.md)
 - [Per-Model Overrides](per-model-overrides.md)
+- [Question-Aware Retrieval](retrieval.md)
 - [Named Route Actions](route-actions.md)
 - [Security Controls](security.md)
 - [Learning Memory](learning-memory.md)
