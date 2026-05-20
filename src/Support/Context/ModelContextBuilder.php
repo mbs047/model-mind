@@ -5,9 +5,13 @@ namespace Mbs\ModelMind\Support\Context;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
+use Illuminate\Support\Collection;
 use Mbs\ModelMind\Concerns\HasModelMindContext;
+use Mbs\ModelMind\Contracts\ModelMindVectorSearcher;
 use Mbs\ModelMind\Support\Actions\RouteActionRegistry;
 use Mbs\ModelMind\Support\Auth\ModelMindAuthorization;
+use Mbs\ModelMind\Support\Retrieval\RetrievalNormalizer;
+use Throwable;
 
 class ModelContextBuilder
 {
@@ -15,6 +19,7 @@ class ModelContextBuilder
         private readonly ModelContextDiscoverer $discoverer,
         private readonly RouteActionRegistry $routeActions,
         private readonly ModelMindAuthorization $authorization,
+        private readonly RetrievalNormalizer $retrievalNormalizer,
     ) {}
 
     /**
@@ -96,35 +101,19 @@ class ModelContextBuilder
         /** @var Model $model */
         $model = new $modelClass;
         $columns = $this->discoverer->columns($model, $settings);
-        $terms = $this->searchTerms($question);
+        $terms = $this->retrievalNormalizer->terms($question);
         $searchColumns = $this->searchColumns($columns, $settings);
 
         if ($columns === [] || $terms === [] || $searchColumns === []) {
             return [];
         }
 
-        try {
-            /** @var Builder<Model> $query */
-            $query = $this->newContextQuery($modelClass, $model, $columns, $settings);
-
-            foreach ($terms as $term) {
-                $query->where(function (Builder $termQuery) use ($searchColumns, $term): void {
-                    foreach ($searchColumns as $column) {
-                        $termQuery->orWhere($column, 'like', "%{$term}%");
-                    }
-                });
-            }
-
-            $rows = $query
-                ->limit(max(1, (int) config('model-mind.retrieval.limit', 8)))
-                ->get()
-                ->map(fn (Model $record): array => $this->recordContext($record, $columns, $settings))
-                ->filter()
-                ->values()
-                ->all();
-        } catch (QueryException) {
-            $rows = [];
-        }
+        $retrieved = $this->retrievedQuestionRecords($modelClass, $model, $columns, $settings, $question, $terms, $searchColumns);
+        $rows = collect($retrieved['records'])
+            ->map(fn (Model $record): array => $this->recordContext($record, $columns, $settings))
+            ->filter()
+            ->values()
+            ->all();
 
         if ($rows === []) {
             return [];
@@ -135,6 +124,13 @@ class ModelContextBuilder
             'description' => $settings['description'] ?? $this->traitDescription($model),
             'model' => $modelClass,
             'matched_terms' => $terms,
+            'retrieval' => [
+                'engine' => $retrieved['engine'],
+                'ranked' => true,
+                'columns' => $searchColumns,
+                'weights' => $this->columnWeights($searchColumns, $settings),
+                'scores' => (bool) config('model-mind.retrieval.include_scores', true) ? $retrieved['scores'] : [],
+            ],
             'rows' => $rows,
         ];
     }
@@ -197,29 +193,357 @@ class ModelContextBuilder
     }
 
     /**
-     * @return array<int, string>
+     * @param  class-string<Model>  $modelClass
+     * @param  array<int, string>  $columns
+     * @param  array<string, mixed>  $settings
+     * @param  array<int, string>  $terms
+     * @param  array<int, string>  $searchColumns
+     * @return array{engine: string, records: array<int, Model>, scores: array<int, array{record: string, score: float, columns: array<int, string>}>}
      */
-    private function searchTerms(string $question): array
+    private function retrievedQuestionRecords(string $modelClass, Model $model, array $columns, array $settings, string $question, array $terms, array $searchColumns): array
     {
-        $stopWords = collect((array) config('model-mind.retrieval.stop_words', []))
-            ->filter(fn (mixed $word): bool => is_string($word))
-            ->map(fn (string $word): string => str($word)->lower()->toString())
-            ->all();
-        $minLength = max(1, (int) config('model-mind.retrieval.min_term_length', 2));
-        $maxTerms = max(1, (int) config('model-mind.retrieval.max_terms', 8));
+        $limit = max(1, (int) config('model-mind.retrieval.limit', 8));
 
-        return str($question)
-            ->lower()
-            ->replaceMatches('/[^\pL\pN]+/u', ' ')
-            ->explode(' ')
-            ->map(fn (string $term): string => trim($term))
-            ->filter(fn (string $term): bool => $term !== ''
-                && mb_strlen($term) >= $minLength
-                && ! in_array($term, $stopWords, true))
-            ->unique()
-            ->take($maxTerms)
+        $vectorRecords = $this->vectorRecords($modelClass, $model, $columns, $settings, $question, $limit);
+
+        if ($vectorRecords !== []) {
+            return [
+                'engine' => 'vector',
+                'records' => $vectorRecords,
+                'scores' => [],
+            ];
+        }
+
+        $scoutRecords = $this->scoutRecords($modelClass, $model, $columns, $settings, $question, $limit);
+
+        if ($scoutRecords !== []) {
+            return [
+                'engine' => 'scout',
+                'records' => $scoutRecords,
+                'scores' => [],
+            ];
+        }
+
+        return $this->databaseRankedRecords($modelClass, $model, $columns, $settings, $question, $terms, $searchColumns, $limit);
+    }
+
+    /**
+     * @param  class-string<Model>  $modelClass
+     * @param  array<int, string>  $columns
+     * @param  array<string, mixed>  $settings
+     * @return array<int, Model>
+     */
+    private function vectorRecords(string $modelClass, Model $model, array $columns, array $settings, string $question, int $limit): array
+    {
+        if (! (bool) config('model-mind.retrieval.vector.enabled', false)) {
+            return [];
+        }
+
+        $searcherClass = config('model-mind.retrieval.vector.searcher');
+
+        if (! is_string($searcherClass) || ! class_exists($searcherClass)) {
+            return [];
+        }
+
+        $searcher = app($searcherClass);
+
+        if (! $searcher instanceof ModelMindVectorSearcher) {
+            return [];
+        }
+
+        try {
+            return $this->recordsFromReferences(
+                $modelClass,
+                $model,
+                $columns,
+                $settings,
+                $searcher->search($question, $modelClass, $settings, $columns, max(1, (int) config('model-mind.retrieval.vector.limit', $limit))),
+                $limit,
+            );
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * @param  class-string<Model>  $modelClass
+     * @param  array<int, string>  $columns
+     * @param  array<string, mixed>  $settings
+     * @return array<int, Model>
+     */
+    private function scoutRecords(string $modelClass, Model $model, array $columns, array $settings, string $question, int $limit): array
+    {
+        if (! (bool) config('model-mind.retrieval.scout.enabled', false) || ! is_callable([$modelClass, 'search'])) {
+            return [];
+        }
+
+        try {
+            $builder = $modelClass::search($question);
+            $scoutLimit = max(1, (int) config('model-mind.retrieval.scout.limit', $limit));
+
+            if (is_object($builder) && method_exists($builder, 'take')) {
+                $builder = $builder->take($scoutLimit);
+            }
+
+            if (! is_object($builder) || ! method_exists($builder, 'get')) {
+                return [];
+            }
+
+            return $this->recordsFromReferences($modelClass, $model, $columns, $settings, $builder->get(), $limit);
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * @param  class-string<Model>  $modelClass
+     * @param  array<int, string>  $columns
+     * @param  array<string, mixed>  $settings
+     * @param  iterable<int, Model|int|string|array<string, mixed>>  $references
+     * @return array<int, Model>
+     */
+    private function recordsFromReferences(string $modelClass, Model $model, array $columns, array $settings, iterable $references, int $limit): array
+    {
+        $keys = collect($references)
+            ->map(function (mixed $reference): mixed {
+                if ($reference instanceof Model) {
+                    return $reference->getKey();
+                }
+
+                if (is_array($reference)) {
+                    if (($reference['model'] ?? null) instanceof Model) {
+                        return $reference['model']->getKey();
+                    }
+
+                    if (($reference['record'] ?? null) instanceof Model) {
+                        return $reference['record']->getKey();
+                    }
+
+                    return $reference['id'] ?? $reference['key'] ?? $reference['record'] ?? $reference['model'] ?? null;
+                }
+
+                return is_scalar($reference) ? $reference : null;
+            })
+            ->filter(fn (mixed $key): bool => is_scalar($key) && filled((string) $key))
+            ->take(max(1, $this->candidateLimit()))
             ->values()
             ->all();
+
+        if ($keys === []) {
+            return [];
+        }
+
+        try {
+            $queryColumns = collect([$model->getKeyName(), ...$columns])
+                ->filter(fn (mixed $column): bool => is_string($column) && filled($column))
+                ->unique()
+                ->values()
+                ->all();
+            $records = $this->newContextQuery($modelClass, $model, $queryColumns, $settings)
+                ->whereKey($keys)
+                ->get()
+                ->filter(fn (Model $record): bool => $this->authorization->allowsRecord($record, $settings))
+                ->keyBy(fn (Model $record): string => (string) $record->getKey());
+
+            return collect($keys)
+                ->map(fn (mixed $key): ?Model => $records->get((string) $key))
+                ->filter()
+                ->take($limit)
+                ->values()
+                ->all();
+        } catch (Throwable) {
+            return [];
+        }
+    }
+
+    /**
+     * @param  class-string<Model>  $modelClass
+     * @param  array<int, string>  $columns
+     * @param  array<string, mixed>  $settings
+     * @param  array<int, string>  $terms
+     * @param  array<int, string>  $searchColumns
+     * @return array{engine: string, records: array<int, Model>, scores: array<int, array{record: string, score: float, columns: array<int, string>}>}
+     */
+    private function databaseRankedRecords(string $modelClass, Model $model, array $columns, array $settings, string $question, array $terms, array $searchColumns, int $limit): array
+    {
+        $candidates = collect($this->databaseCandidates($modelClass, $model, $columns, $settings, $terms, $searchColumns, true));
+
+        if ((bool) config('model-mind.retrieval.fuzzy.enabled', true)) {
+            $fallback = collect($this->databaseCandidates($modelClass, $model, $columns, $settings, $terms, $searchColumns, false));
+            $candidates = $candidates
+                ->merge($fallback)
+                ->unique(fn (Model $record): string => (string) ($record->getKey() ?? spl_object_id($record)))
+                ->values();
+        }
+
+        $ranked = $this->rankRecords($candidates->all(), $question, $terms, $searchColumns, $settings)
+            ->filter(fn (array $rankedRecord): bool => $rankedRecord['score'] >= max(0.0, (float) config('model-mind.retrieval.min_score', 0.1)))
+            ->take($limit)
+            ->values();
+
+        return [
+            'engine' => 'ranked_database',
+            'records' => $ranked->pluck('record')->all(),
+            'scores' => $ranked
+                ->map(fn (array $rankedRecord): array => [
+                    'record' => $this->recordDebugLabel($rankedRecord['record']),
+                    'score' => round((float) $rankedRecord['score'], 3),
+                    'columns' => array_values($rankedRecord['columns']),
+                ])
+                ->all(),
+        ];
+    }
+
+    /**
+     * @param  class-string<Model>  $modelClass
+     * @param  array<int, string>  $columns
+     * @param  array<string, mixed>  $settings
+     * @param  array<int, string>  $terms
+     * @param  array<int, string>  $searchColumns
+     * @return array<int, Model>
+     */
+    private function databaseCandidates(string $modelClass, Model $model, array $columns, array $settings, array $terms, array $searchColumns, bool $filtered): array
+    {
+        try {
+            $query = $this->newContextQuery($modelClass, $model, $columns, $settings);
+
+            if ($filtered) {
+                $query->where(function (Builder $candidateQuery) use ($searchColumns, $terms): void {
+                    foreach ($terms as $term) {
+                        foreach ($searchColumns as $column) {
+                            $candidateQuery->orWhere($column, 'like', "%{$term}%");
+                        }
+                    }
+                });
+            }
+
+            return $query
+                ->limit($this->candidateLimit())
+                ->get()
+                ->filter(fn (Model $record): bool => $this->authorization->allowsRecord($record, $settings))
+                ->values()
+                ->all();
+        } catch (QueryException) {
+            return [];
+        }
+    }
+
+    /**
+     * @param  array<int, Model>  $records
+     * @param  array<int, string>  $terms
+     * @param  array<int, string>  $searchColumns
+     * @param  array<string, mixed>  $settings
+     */
+    private function rankRecords(array $records, string $question, array $terms, array $searchColumns, array $settings): Collection
+    {
+        $normalizedQuestion = $this->retrievalNormalizer->normalize($question);
+        $weights = $this->columnWeights($searchColumns, $settings);
+
+        return collect($records)
+            ->map(function (Model $record, int $index) use ($normalizedQuestion, $terms, $searchColumns, $weights): array {
+                $scored = $this->scoreRecord($record, $normalizedQuestion, $terms, $searchColumns, $weights);
+
+                return [
+                    'record' => $record,
+                    'score' => $scored['score'],
+                    'columns' => $scored['columns'],
+                    'index' => $index,
+                ];
+            })
+            ->sort(function (array $left, array $right): int {
+                $scoreComparison = $right['score'] <=> $left['score'];
+
+                return $scoreComparison !== 0 ? $scoreComparison : ($left['index'] <=> $right['index']);
+            });
+    }
+
+    /**
+     * @param  array<int, string>  $terms
+     * @param  array<int, string>  $searchColumns
+     * @param  array<string, float>  $weights
+     * @return array{score: float, columns: array<int, string>}
+     */
+    private function scoreRecord(Model $record, string $normalizedQuestion, array $terms, array $searchColumns, array $weights): array
+    {
+        $score = 0.0;
+        $matchedColumns = [];
+
+        foreach ($searchColumns as $column) {
+            $value = $record->getAttribute($column);
+
+            if (! is_scalar($value) || blank((string) $value)) {
+                continue;
+            }
+
+            $normalizedValue = $this->retrievalNormalizer->normalize((string) $value);
+
+            if ($normalizedValue === '') {
+                continue;
+            }
+
+            $weight = $weights[$column] ?? 1.0;
+            $columnScore = 0.0;
+
+            if ($normalizedQuestion !== '' && str_contains(" {$normalizedValue} ", " {$normalizedQuestion} ")) {
+                $columnScore += $weight * 4.0;
+            }
+
+            foreach ($terms as $term) {
+                if (str_contains(" {$normalizedValue} ", " {$term} ")) {
+                    $columnScore += $weight * 1.5;
+
+                    continue;
+                }
+
+                if (str_contains($normalizedValue, $term)) {
+                    $columnScore += $weight;
+
+                    continue;
+                }
+
+                $columnScore += $this->fuzzyScore($term, $normalizedValue, $weight);
+            }
+
+            if ($columnScore > 0) {
+                $matchedColumns[] = $column;
+                $score += $columnScore;
+            }
+        }
+
+        return [
+            'score' => $score,
+            'columns' => array_values(array_unique($matchedColumns)),
+        ];
+    }
+
+    private function fuzzyScore(string $term, string $normalizedValue, float $weight): float
+    {
+        if (! (bool) config('model-mind.retrieval.fuzzy.enabled', true) || mb_strlen($term) < 4) {
+            return 0.0;
+        }
+
+        $maxDistance = max(0, (int) config('model-mind.retrieval.fuzzy.max_distance', 2));
+        $minSimilarity = max(0.0, min(1.0, (float) config('model-mind.retrieval.fuzzy.min_similarity', 0.72)));
+
+        foreach ($this->retrievalNormalizer->tokens($normalizedValue) as $token) {
+            if (abs(mb_strlen($token) - mb_strlen($term)) > $maxDistance) {
+                continue;
+            }
+
+            $distance = levenshtein($term, $token);
+
+            if ($distance > $maxDistance) {
+                continue;
+            }
+
+            $similarity = 1 - ($distance / max(strlen($term), strlen($token), 1));
+
+            if ($similarity >= $minSimilarity) {
+                return $weight * $similarity * 0.75;
+            }
+        }
+
+        return 0.0;
     }
 
     /**
@@ -229,7 +553,11 @@ class ModelContextBuilder
      */
     private function searchColumns(array $columns, array $settings): array
     {
-        $configuredColumns = array_values(array_filter((array) ($settings['search_columns'] ?? []), 'is_string'));
+        $configuredColumns = collect((array) ($settings['search_columns'] ?? []))
+            ->map(fn (mixed $value, string|int $key): mixed => is_string($key) ? $key : $value)
+            ->filter(fn (mixed $column): bool => is_string($column))
+            ->values()
+            ->all();
         $preferredColumns = $configuredColumns !== []
             ? $configuredColumns
             : [
@@ -253,6 +581,60 @@ class ModelContextBuilder
             ->filter(fn (string $column): bool => preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $column) === 1)
             ->values()
             ->all();
+    }
+
+    /**
+     * @param  array<int, string>  $searchColumns
+     * @param  array<string, mixed>  $settings
+     * @return array<string, float>
+     */
+    private function columnWeights(array $searchColumns, array $settings): array
+    {
+        $configuredSearchColumns = collect((array) ($settings['search_columns'] ?? []))
+            ->filter(fn (mixed $value, string|int $key): bool => is_string($key) && is_numeric($value))
+            ->mapWithKeys(fn (mixed $value, string $key): array => [$key => (float) $value])
+            ->all();
+        $modelWeights = collect((array) ($settings['retrieval']['weights'] ?? $settings['retrieval_weights'] ?? []))
+            ->filter(fn (mixed $value): bool => is_numeric($value))
+            ->map(fn (mixed $value): float => (float) $value)
+            ->all();
+        $globalWeights = collect((array) config('model-mind.retrieval.column_weights', []))
+            ->filter(fn (mixed $value): bool => is_numeric($value))
+            ->map(fn (mixed $value): float => (float) $value)
+            ->all();
+
+        return collect($searchColumns)
+            ->mapWithKeys(fn (string $column): array => [
+                $column => max(0.1, (float) ($configuredSearchColumns[$column] ?? $modelWeights[$column] ?? $globalWeights[$column] ?? 1.0)),
+            ])
+            ->all();
+    }
+
+    private function candidateLimit(): int
+    {
+        return max(
+            max(1, (int) config('model-mind.retrieval.limit', 8)),
+            (int) config('model-mind.retrieval.candidate_limit', 60),
+        );
+    }
+
+    private function recordDebugLabel(Model $record): string
+    {
+        foreach ((array) config('model-mind.citations.label_columns', []) as $column) {
+            if (! is_string($column)) {
+                continue;
+            }
+
+            $value = $record->getAttribute($column);
+
+            if (is_scalar($value) && filled((string) $value)) {
+                return str((string) $value)->squish()->limit(100, '')->toString();
+            }
+        }
+
+        $key = $record->getKey();
+
+        return is_scalar($key) ? '#'.((string) $key) : class_basename($record);
     }
 
     /**

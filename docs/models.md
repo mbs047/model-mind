@@ -29,7 +29,8 @@ ModelMind only reads models that are explicitly enabled in `config/model-mind.ph
 - `relations`: Eloquent relations to eager load with selected columns.
 - `limit`: max records for this model before global security limits are applied.
 - `order_by`: column and direction pairs used to sort records.
-- `search_columns`: allowed columns used by question-aware retrieval.
+- `search_columns`: allowed columns used by question-aware retrieval. Use an associative array such as `['sku' => 12, 'name' => 10]` for weighted ranking.
+- `retrieval_weights`: optional per-model ranking weights when `search_columns` is a simple list.
 - `source_label_column`: record display column used by source citation cards.
 - `source_label_template`: optional citation label template such as `{name} ({sku})`.
 - `authorization`: per-model user, tenant, Gate, policy, and callback controls.

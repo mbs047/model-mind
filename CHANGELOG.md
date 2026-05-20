@@ -6,6 +6,13 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+### Added
+
+- Ranked question-aware retrieval with weighted columns, retrieval scores, fuzzy typo matching, and multilingual normalization.
+- Optional Laravel Scout candidate retrieval before database ranking.
+- Optional vector search extension through `ModelMindVectorSearcher` for embeddings or external vector indexes.
+- Retrieval documentation for column weights, fuzzy settings, multilingual normalization, Scout, and vector searchers.
+
 ## v1.0.13 - 2026-05-21
 
 ### Added

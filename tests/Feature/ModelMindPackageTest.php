@@ -17,6 +17,7 @@ use Mbs\ModelMind\Models\ModelMindSession;
 use Mbs\ModelMind\Support\Context\ContextRegistry;
 use Mbs\ModelMind\Support\Database\TableNames;
 use Mbs\ModelMind\Support\Presets\ModelMindPresetRepository;
+use Mbs\ModelMind\Tests\Fixtures\FakeVectorSearcher;
 use Mbs\ModelMind\Tests\Fixtures\KnowledgeEntry;
 use Mbs\ModelMind\Tests\Fixtures\User;
 use Mbs\ModelMind\Tests\TestCase;
@@ -661,6 +662,86 @@ class ModelMindPackageTest extends TestCase
             ->assertJsonPath('answer', 'Samsung Galaxy S24 Ultra is available in the enabled context.')
             ->assertJsonPath('actions.0.kind', 'route')
             ->assertJsonPath('actions.0.url', url("/knowledge/{$entry->id}"));
+    }
+
+    public function test_ranked_retrieval_prefers_weighted_column_matches(): void
+    {
+        config()->set('model-mind.models', [
+            KnowledgeEntry::class => [
+                'enabled' => true,
+                'columns' => 'auto',
+                'search_columns' => [
+                    'title' => 10,
+                    'body' => 1,
+                ],
+                'limit' => 10,
+                'order_by' => ['id' => 'asc'],
+            ],
+        ]);
+
+        KnowledgeEntry::query()->create([
+            'title' => 'Generic mobile policy',
+            'body' => 'Samsung Galaxy S24 Ultra appears only in a low-priority body field.',
+            'is_public' => true,
+        ]);
+        KnowledgeEntry::query()->create([
+            'title' => 'Samsung Galaxy S24 Ultra',
+            'body' => 'A product title match should rank ahead of a body-only match.',
+            'is_public' => true,
+        ]);
+
+        $context = app(ContextRegistry::class)->context('samsung s24');
+        $retrieval = data_get($context, 'question_context.models.0.retrieval');
+        $rows = data_get($context, 'question_context.models.0.rows');
+
+        $this->assertSame('ranked_database', $retrieval['engine']);
+        $this->assertSame(['title' => 10.0, 'body' => 1.0], $retrieval['weights']);
+        $this->assertSame('Samsung Galaxy S24 Ultra', $rows[0]['title']);
+        $this->assertContains('title', $retrieval['scores'][0]['columns']);
+    }
+
+    public function test_ranked_retrieval_uses_fuzzy_and_multilingual_normalization(): void
+    {
+        KnowledgeEntry::query()->create([
+            'title' => 'Samsung Galaxy S24 Ultra',
+            'body' => 'A flagship phone record that should match misspelled searches.',
+            'is_public' => true,
+        ]);
+        KnowledgeEntry::query()->create([
+            'title' => 'خطة الدَّعْم',
+            'body' => 'Arabic diacritics should normalize for retrieval.',
+            'is_public' => true,
+        ]);
+
+        $fuzzyContext = app(ContextRegistry::class)->context('samsng galxy');
+        $arabicContext = app(ContextRegistry::class)->context('خطة الدعم');
+
+        $this->assertSame('Samsung Galaxy S24 Ultra', data_get($fuzzyContext, 'question_context.models.0.rows.0.title'));
+        $this->assertSame('خطة الدَّعْم', data_get($arabicContext, 'question_context.models.0.rows.0.title'));
+    }
+
+    public function test_retrieval_can_use_configured_vector_searcher(): void
+    {
+        config()->set('model-mind.retrieval.vector.enabled', true);
+        config()->set('model-mind.retrieval.vector.searcher', FakeVectorSearcher::class);
+
+        $first = KnowledgeEntry::query()->create([
+            'title' => 'First vector result',
+            'body' => 'Returned second by fake vector search.',
+            'is_public' => true,
+        ]);
+        $second = KnowledgeEntry::query()->create([
+            'title' => 'Second vector result',
+            'body' => 'Returned first by fake vector search.',
+            'is_public' => true,
+        ]);
+        FakeVectorSearcher::$keys = [$second->id, $first->id];
+
+        $context = app(ContextRegistry::class)->context('semantic vector question');
+
+        $this->assertSame('vector', data_get($context, 'question_context.models.0.retrieval.engine'));
+        $this->assertSame('Second vector result', data_get($context, 'question_context.models.0.rows.0.title'));
+        $this->assertSame('First vector result', data_get($context, 'question_context.models.0.rows.1.title'));
     }
 
     public function test_chat_endpoint_resolves_whitelisted_named_route_actions(): void

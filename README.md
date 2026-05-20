@@ -25,6 +25,7 @@ Try ModelMind in [Market Lane Store](https://mbs-sample.on-forge.com/), a sample
 - Configurable widget position, width, offset, z-index, labels, prompt tone, and brand mark.
 - Model-aware answers from only the Eloquent models you explicitly enable.
 - User-aware context with guard, role, tenant, and Gate/policy scoping.
+- Ranked retrieval with weighted columns, fuzzy matching, multilingual normalization, optional Scout, and optional vector search.
 - Auto-discovered columns with sensitive field filtering.
 - Per-model control through the `HasModelMindContext` trait.
 - Persisted chat sessions, message history, user feedback, and learned knowledge.
@@ -114,6 +115,8 @@ MODEL_MIND_DEFAULT_QUESTIONS="What can you help with?|What data can you see?|How
 MODEL_MIND_SESSION_LIFETIME_MINUTES=120
 MODEL_MIND_CONTEXT_CACHE_SECONDS=600
 MODEL_MIND_RETRIEVAL_ENABLED=true
+MODEL_MIND_RETRIEVAL_FUZZY=true
+MODEL_MIND_RETRIEVAL_MULTILINGUAL=true
 MODEL_MIND_INFER_ROUTE_ACTIONS=true
 MODEL_MIND_CITATIONS_ENABLED=true
 MODEL_MIND_INFER_SOURCE_CITATIONS=true
