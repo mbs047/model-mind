@@ -6,6 +6,8 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+## v1.0.5 - 2026-05-20
+
 ### Added
 
 - Configurable named-route actions so assistant answers can produce safe Laravel route buttons from approved route names and parameters.
