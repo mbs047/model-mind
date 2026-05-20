@@ -44,6 +44,15 @@ class ModelMindServiceProvider extends ServiceProvider
             ->prefix((string) config('model-mind.routes.prefix', 'model-mind'))
             ->as((string) config('model-mind.routes.name', 'model-mind.'))
             ->group(__DIR__.'/../routes/web.php');
+
+        if (! (bool) config('model-mind.api.enabled', true)) {
+            return;
+        }
+
+        Route::middleware(config('model-mind.api.middleware', ['api', 'throttle:model-mind-api']))
+            ->prefix((string) config('model-mind.api.prefix', 'api/model-mind'))
+            ->as((string) config('model-mind.api.name', 'model-mind.api.'))
+            ->group(__DIR__.'/../routes/api.php');
     }
 
     private function registerBladeDirectives(): void
@@ -90,6 +99,13 @@ class ModelMindServiceProvider extends ServiceProvider
     {
         RateLimiter::for('model-mind', function (Request $request): Limit {
             return Limit::perMinute(12)->by($request->ip() ?? 'guest');
+        });
+
+        RateLimiter::for('model-mind-api', function (Request $request): Limit {
+            $rateLimit = max(1, (int) config('model-mind.api.rate_limit', 30));
+            $identifier = $request->user()?->getAuthIdentifier() ?? $request->ip() ?? 'guest';
+
+            return Limit::perMinute($rateLimit)->by((string) $identifier);
         });
     }
 

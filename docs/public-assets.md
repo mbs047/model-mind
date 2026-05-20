@@ -42,7 +42,7 @@ When `MODEL_MIND_USE_PUBLIC_ASSETS=true`, the standard directives render public 
 @modelMindScripts
 ```
 
-The modal markup still comes from Blade because it contains Laravel routes, CSRF data, labels, theme, and runtime config.
+The modal markup still comes from Blade because it contains Laravel routes, CSRF data, labels, theme, and runtime config. If you do not want Blade markup at all, use the [Headless API](headless-api.md) and build the chat UI in your client application.
 
 ## Custom Assets
 

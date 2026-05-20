@@ -6,6 +6,15 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+## v1.0.12 - 2026-05-21
+
+### Added
+
+- Headless JSON API mode with separate configurable API routes for custom React, Vue, Inertia, and mobile UIs.
+- API manifest endpoint that exposes assistant labels, feature flags, limits, and endpoint URLs without rendering the Blade modal.
+- `model-mind-api` rate limiter and API route configuration for stateless clients that carry `session_id`.
+- Documentation and tests for the embeddable API contract.
+
 ## v1.0.11 - 2026-05-21
 
 ### Added

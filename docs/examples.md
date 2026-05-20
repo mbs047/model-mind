@@ -102,6 +102,10 @@ MODEL_MIND_REASONING_EFFORT=minimal
 
 MODEL_MIND_ROUTE_PREFIX=ai/model-mind
 MODEL_MIND_ROUTE_NAME=model-mind.
+MODEL_MIND_API_ENABLED=true
+MODEL_MIND_API_PREFIX=api/model-mind
+MODEL_MIND_API_ROUTE_NAME=model-mind.api.
+MODEL_MIND_API_RATE_LIMIT=30
 MODEL_MIND_TABLE_PREFIX=assistant_
 
 MODEL_MIND_THEME=auto
@@ -167,6 +171,14 @@ MODEL_MIND_LEARNING_CONTEXT_LIMIT=12
     'prefix' => env('MODEL_MIND_ROUTE_PREFIX', 'ai/model-mind'),
     'name' => env('MODEL_MIND_ROUTE_NAME', 'model-mind.'),
     'middleware' => ['web', 'auth', 'throttle:model-mind'],
+],
+
+'api' => [
+    'enabled' => filter_var(env('MODEL_MIND_API_ENABLED', true), FILTER_VALIDATE_BOOL),
+    'prefix' => env('MODEL_MIND_API_PREFIX', 'api/model-mind'),
+    'name' => env('MODEL_MIND_API_ROUTE_NAME', 'model-mind.api.'),
+    'middleware' => ['api', 'auth:sanctum', 'throttle:model-mind-api'],
+    'rate_limit' => (int) env('MODEL_MIND_API_RATE_LIMIT', 30),
 ],
 
 'database' => [
@@ -513,6 +525,13 @@ php artisan model-mind:clear-context
 php artisan model-mind:learn "Priority support customers receive a same-day response." --title="Priority support policy"
 ```
 
+Headless clients can bootstrap their UI from:
+
+```bash
+GET /api/model-mind/manifest
+POST /api/model-mind/chat
+```
+
 ## Related Guides
 
 - [Installation](installation.md)
@@ -520,6 +539,7 @@ php artisan model-mind:learn "Priority support customers receive a same-day resp
 - [Default Questions](default-questions.md)
 - [Models and Context](models.md)
 - [Named Route Actions](route-actions.md)
+- [Headless API](headless-api.md)
 - [Learning Memory](learning-memory.md)
 - [Sessions](sessions.md)
 - [Multilingual Answers](multilingual.md)

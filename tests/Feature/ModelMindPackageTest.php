@@ -197,6 +197,75 @@ class ModelMindPackageTest extends TestCase
         $this->assertStringContainsString('Would publish [model-mind-assets].', Artisan::output());
     }
 
+    public function test_headless_api_manifest_exposes_embeddable_json_contract(): void
+    {
+        config()->set('model-mind.assistant.default_questions', [
+            'Which products are low in stock?',
+            'Show recent orders',
+        ]);
+
+        $response = $this->getJson(route('model-mind.api.manifest'));
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('name', 'ModelMind')
+            ->assertJsonPath('brand_mark', 'MBS')
+            ->assertJsonPath('default_questions.0', 'Which products are low in stock?')
+            ->assertJsonPath('features.feedback', true)
+            ->assertJsonPath('features.actions', true)
+            ->assertJsonPath('features.citations', true)
+            ->assertJsonPath('endpoints.chat', route('model-mind.api.chat'))
+            ->assertJsonPath('endpoints.session', route('model-mind.api.session'))
+            ->assertJsonPath('limits.question_characters', 2000)
+            ->assertJsonPath('session_lifetime_minutes', 120);
+
+        $this->assertStringContainsString(
+            '/api/model-mind/messages/{message}/feedback',
+            $response->json('endpoints.feedback'),
+        );
+    }
+
+    public function test_headless_api_chat_supports_stateless_custom_clients(): void
+    {
+        $entry = KnowledgeEntry::query()->create([
+            'title' => 'Headless API policy',
+            'body' => 'React and mobile clients should carry the session_id between requests.',
+            'is_public' => true,
+        ]);
+
+        Http::fake([
+            'api.openai.com/v1/responses' => fn () => Http::response([
+                'output_text' => "React and mobile clients should carry the session_id between requests.\n[[model_mind_route key=\"knowledge.view\" entry=\"{$entry->id}\"]]",
+            ]),
+        ]);
+
+        $response = $this->postJson(route('model-mind.api.chat'), [
+            'question' => 'How should custom clients keep a session?',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonStructure([
+                'answer',
+                'actions',
+                'citations',
+                'session_id',
+                'expires_at',
+                'user_message_id',
+                'message_id',
+            ])
+            ->assertJsonPath('answer', 'React and mobile clients should carry the session_id between requests.')
+            ->assertJsonPath('actions.0.url', url("/knowledge/{$entry->id}"));
+
+        $this->getJson(route('model-mind.api.session', [
+            'session_id' => $response->json('session_id'),
+        ]))
+            ->assertOk()
+            ->assertJsonPath('messages.0.role', ModelMindMessage::ROLE_USER)
+            ->assertJsonPath('messages.1.role', ModelMindMessage::ROLE_ASSISTANT)
+            ->assertJsonPath('messages.1.actions.0.url', url("/knowledge/{$entry->id}"));
+    }
+
     public function test_context_cache_can_be_cleared(): void
     {
         Cache::put('model-mind.context.v1', ['stale' => true], 600);

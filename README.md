@@ -19,6 +19,7 @@ Try ModelMind in [Market Lane Store](https://mbs-sample.on-forge.com/), a sample
 ## Features
 
 - Drop-in Blade chat modal with Tailwind-friendly styles.
+- Headless JSON API mode for React, Vue, Inertia, and mobile clients.
 - `@modelMind`, `@modelMindModal`, `@modelMindStyles`, and `@modelMindScripts` directives.
 - Configurable widget position, width, offset, z-index, labels, prompt tone, and brand mark.
 - Model-aware answers from only the Eloquent models you explicitly enable.
@@ -105,6 +106,8 @@ MODEL_MIND_WIDTH=25rem
 MODEL_MIND_OFFSET=1.25rem
 MODEL_MIND_Z_INDEX=9999
 MODEL_MIND_TABLE_PREFIX=model_mind_
+MODEL_MIND_API_ENABLED=true
+MODEL_MIND_API_PREFIX=api/model-mind
 MODEL_MIND_DEFAULT_QUESTIONS="What can you help with?|What data can you see?|How do I configure you?"
 MODEL_MIND_SESSION_LIFETIME_MINUTES=120
 MODEL_MIND_CONTEXT_CACHE_SECONDS=600
@@ -120,7 +123,7 @@ Supported widget positions are `bottom-right`, `bottom-left`, `bottom-center`, `
 
 ## Full Documentation
 
-Read the documentation index in [docs/README.md](docs/README.md). Start with [docs/examples.md](docs/examples.md) for simple and advanced copyable setups. Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, model configuration, multilingual answers, retrieval, route actions, source citations, authorization, security, learning memory, feedback, table prefixes, providers, routes, performance, and testing.
+Read the documentation index in [docs/README.md](docs/README.md). Start with [docs/examples.md](docs/examples.md) for simple and advanced copyable setups. Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, headless API mode, model configuration, multilingual answers, retrieval, route actions, source citations, authorization, security, learning memory, feedback, table prefixes, providers, routes, performance, and testing.
 
 For custom UI work, read [docs/customizing-the-modal.md](docs/customizing-the-modal.md). You can publish the default Blade views, or point ModelMind to a completely new modal, styles, and script from config.
 

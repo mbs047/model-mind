@@ -39,6 +39,14 @@ return [
         'middleware' => ['web', 'throttle:model-mind'],
     ],
 
+    'api' => [
+        'enabled' => filter_var(env('MODEL_MIND_API_ENABLED', true), FILTER_VALIDATE_BOOL),
+        'prefix' => env('MODEL_MIND_API_PREFIX', 'api/model-mind'),
+        'name' => env('MODEL_MIND_API_ROUTE_NAME', 'model-mind.api.'),
+        'middleware' => ['api', 'throttle:model-mind-api'],
+        'rate_limit' => (int) env('MODEL_MIND_API_RATE_LIMIT', 30),
+    ],
+
     'database' => [
         'table_prefix' => env('MODEL_MIND_TABLE_PREFIX', 'model_mind_'),
     ],

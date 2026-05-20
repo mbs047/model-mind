@@ -20,6 +20,40 @@ use RuntimeException;
 
 class ModelMindController extends Controller
 {
+    public function manifest(): JsonResponse
+    {
+        $assistant = config('model-mind.assistant', []);
+        $assistant = is_array($assistant) ? $assistant : [];
+
+        return response()->json([
+            'name' => $this->cleanManifestText($assistant['name'] ?? 'ModelMind'),
+            'brand_mark' => $this->cleanManifestText($assistant['brand_mark'] ?? 'MBS'),
+            'subtitle' => $this->cleanManifestText($assistant['subtitle'] ?? 'AI assistant powered by your application data'),
+            'launcher_label' => $this->cleanManifestText($assistant['launcher_label'] ?? 'Ask ModelMind'),
+            'placeholder' => $this->cleanManifestText($assistant['placeholder'] ?? 'Ask about the enabled application data'),
+            'initial_message' => $this->cleanManifestText($assistant['initial_message'] ?? 'Hi, I am ModelMind. I can answer from the application data that has been safely enabled for me.', 600),
+            'fallback_answer' => $this->cleanManifestText($assistant['fallback_answer'] ?? 'I do not have that information in the enabled application context yet.', 600),
+            'default_questions' => $this->manifestQuestions($assistant['default_questions'] ?? $assistant['quick_questions'] ?? []),
+            'features' => [
+                'feedback' => (bool) config('model-mind.features.feedback', true),
+                'actions' => (bool) config('model-mind.features.actions', true),
+                'citations' => (bool) config('model-mind.features.citations', true),
+            ],
+            'endpoints' => [
+                'chat' => route((string) config('model-mind.api.name', 'model-mind.api.').'chat'),
+                'session' => route((string) config('model-mind.api.name', 'model-mind.api.').'session'),
+                'feedback' => $this->apiFeedbackEndpointTemplate(),
+            ],
+            'limits' => [
+                'question_characters' => 2000,
+                'history_messages' => 20,
+                'history_message_characters' => 10000,
+                'feedback_note_characters' => 1000,
+            ],
+            'session_lifetime_minutes' => max(0, (int) config('model-mind.memory.session_lifetime_minutes', 120)),
+        ]);
+    }
+
     public function chat(
         AskModelMindRequest $request,
         ModelMindProvider $provider,
@@ -274,6 +308,41 @@ class ModelMindController extends Controller
         return preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $uuid) === 1
             ? $uuid
             : null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function manifestQuestions(mixed $questions): array
+    {
+        $questions = is_string($questions) ? explode('|', $questions) : (array) $questions;
+
+        return collect($questions)
+            ->filter(fn (mixed $question): bool => is_scalar($question))
+            ->map(fn (mixed $question): string => $this->cleanManifestText($question, 90))
+            ->filter()
+            ->take(6)
+            ->values()
+            ->all();
+    }
+
+    private function apiFeedbackEndpointTemplate(): string
+    {
+        $prefix = trim((string) config('model-mind.api.prefix', 'api/model-mind'), '/');
+
+        return url($prefix.'/messages/{message}/feedback');
+    }
+
+    private function cleanManifestText(mixed $value, int $limit = 160): string
+    {
+        if (! is_scalar($value)) {
+            return '';
+        }
+
+        return str(strip_tags((string) $value))
+            ->squish()
+            ->limit($limit, '')
+            ->toString();
     }
 
     /**

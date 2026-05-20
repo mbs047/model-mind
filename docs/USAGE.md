@@ -32,6 +32,7 @@ This page is the compact starting point for ModelMind. Each major feature now ha
 - [Sessions](sessions.md)
 - [Multilingual Answers](multilingual.md)
 - [Database Tables](database-tables.md)
+- [Headless API](headless-api.md)
 - [Public Assets](public-assets.md)
 - [Customizing the Chat Modal](customizing-the-modal.md)
 - [Custom Context Providers](context-providers.md)
