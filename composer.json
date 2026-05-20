@@ -1,0 +1,42 @@
+{
+    "name": "mbs/laravel-ai-chat",
+    "description": "MBS Laravel AI Chat: a secure, configurable, model-aware AI chat assistant for Laravel applications.",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "laravel",
+        "ai",
+        "chat",
+        "assistant",
+        "eloquent",
+        "blade",
+        "tailwind",
+        "mbs"
+    ],
+    "authors": [
+        {
+            "name": "Mohammed Baobaid",
+            "homepage": "https://github.com/mbs047"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Mbs\\LaravelAiChat\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Mbs\\LaravelAiChat\\MbsAiChatServiceProvider"
+            ]
+        }
+    },
+    "require": {
+        "php": "^8.3",
+        "illuminate/contracts": "^11.0|^12.0|^13.0",
+        "illuminate/database": "^11.0|^12.0|^13.0",
+        "illuminate/http": "^11.0|^12.0|^13.0",
+        "illuminate/support": "^11.0|^12.0|^13.0",
+        "illuminate/view": "^11.0|^12.0|^13.0"
+    }
+}
