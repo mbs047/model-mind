@@ -3,12 +3,13 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
+use Mbs\ModelMind\Support\Database\TableNames;
 
 return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('model_mind_sessions', function (Blueprint $table): void {
+        Schema::create(TableNames::sessions(), function (Blueprint $table): void {
             $table->id();
             $table->uuid('uuid')->unique();
             $table->longText('conversation_summary')->nullable();
@@ -24,6 +25,6 @@ return new class extends Migration
 
     public function down(): void
     {
-        Schema::dropIfExists('model_mind_sessions');
+        Schema::dropIfExists(TableNames::sessions());
     }
 };

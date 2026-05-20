@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Mbs\ModelMind\Console\Commands\InspectModelMindContextCommand;
 use Mbs\ModelMind\Console\Commands\InstallModelMindCommand;
+use Mbs\ModelMind\Console\Commands\LearnModelMindKnowledgeCommand;
 use Mbs\ModelMind\Contracts\ModelMindProvider;
 use Mbs\ModelMind\Support\Providers\OpenAiModelMindProvider;
 
@@ -82,6 +83,7 @@ class ModelMindServiceProvider extends ServiceProvider
         $this->commands([
             InstallModelMindCommand::class,
             InspectModelMindContextCommand::class,
+            LearnModelMindKnowledgeCommand::class,
         ]);
     }
 }

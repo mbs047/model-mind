@@ -263,8 +263,8 @@
 
                 const wrapper = createElement('div', { className: 'mt-2 flex gap-1' });
                 const buttons = [
-                    ['liked', 'Helpful', 'Mark helpful'],
-                    ['disliked', 'Not helpful', 'Mark not helpful'],
+                    ['liked', '\u2713', 'Mark helpful'],
+                    ['disliked', '!', 'Mark not helpful'],
                 ];
 
                 buttons.forEach(([value, label, ariaLabel]) => {
@@ -272,11 +272,12 @@
                         ? ' border-emerald-400 text-emerald-700 dark:text-emerald-300'
                         : ' border-rose-400 text-rose-700 dark:text-rose-300';
                     const button = createElement('button', {
-                        className: `rounded-full border border-slate-200 px-2 py-1 text-xs font-bold text-slate-500 transition hover:text-slate-950 disabled:opacity-50 dark:border-white/10 dark:text-slate-400 dark:hover:text-white${message.feedback === value ? activeClass : ''}`,
+                        className: `inline-flex size-7 items-center justify-center rounded-full border border-slate-200 bg-white text-xs font-black text-slate-500 transition hover:border-slate-400 hover:text-slate-950 disabled:opacity-50 dark:border-white/10 dark:bg-slate-950 dark:text-slate-400 dark:hover:text-white${message.feedback === value ? activeClass : ''}`,
                         text: label,
                         attributes: {
                             type: 'button',
                             'aria-label': ariaLabel,
+                            title: ariaLabel,
                         },
                     });
 

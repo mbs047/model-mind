@@ -46,7 +46,11 @@ class OpenAiModelMindProvider implements ModelMindProvider
         $responsePayload = $this->post($apiKey, $payload);
         $answer = $this->extractText($responsePayload);
 
-        if (blank($answer) && Arr::get($responsePayload, 'incomplete_details.reason') === 'max_output_tokens') {
+        if (
+            blank($answer)
+            && (bool) config('model-mind.provider.retry_when_truncated', false)
+            && Arr::get($responsePayload, 'incomplete_details.reason') === 'max_output_tokens'
+        ) {
             $payload['max_output_tokens'] = max((int) $payload['max_output_tokens'], 1200);
             $responsePayload = $this->post($apiKey, $payload);
             $answer = $this->extractText($responsePayload);

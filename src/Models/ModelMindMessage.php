@@ -5,6 +5,7 @@ namespace Mbs\ModelMind\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
+use Mbs\ModelMind\Support\Database\TableNames;
 
 class ModelMindMessage extends Model
 {
@@ -15,8 +16,6 @@ class ModelMindMessage extends Model
     public const FEEDBACK_LIKED = 'liked';
 
     public const FEEDBACK_DISLIKED = 'disliked';
-
-    protected $table = 'model_mind_messages';
 
     protected $fillable = [
         'model_mind_session_id',
@@ -47,6 +46,11 @@ class ModelMindMessage extends Model
     public function getRouteKeyName(): string
     {
         return 'uuid';
+    }
+
+    public function getTable(): string
+    {
+        return TableNames::messages();
     }
 
     public function session(): BelongsTo

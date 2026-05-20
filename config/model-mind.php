@@ -20,13 +20,14 @@ return [
 
     'provider' => [
         'default' => env('MODEL_MIND_PROVIDER', 'openai'),
-        'model' => env('MODEL_MIND_MODEL', env('OPENAI_MODEL', 'gpt-5-mini')),
+        'model' => env('MODEL_MIND_MODEL', env('OPENAI_MODEL', 'gpt-5-nano')),
         'api_key' => env('MODEL_MIND_OPENAI_API_KEY', env('OPENAI_API_KEY')),
         'organization' => env('MODEL_MIND_OPENAI_ORGANIZATION', env('OPENAI_ORGANIZATION')),
-        'timeout' => (int) env('MODEL_MIND_TIMEOUT', 20),
-        'connect_timeout' => (int) env('MODEL_MIND_CONNECT_TIMEOUT', 4),
-        'max_output_tokens' => (int) env('MODEL_MIND_MAX_OUTPUT_TOKENS', 700),
+        'timeout' => (int) env('MODEL_MIND_TIMEOUT', 12),
+        'connect_timeout' => (int) env('MODEL_MIND_CONNECT_TIMEOUT', 3),
+        'max_output_tokens' => (int) env('MODEL_MIND_MAX_OUTPUT_TOKENS', 450),
         'reasoning_effort' => env('MODEL_MIND_REASONING_EFFORT', 'minimal'),
+        'retry_when_truncated' => filter_var(env('MODEL_MIND_RETRY_WHEN_TRUNCATED', false), FILTER_VALIDATE_BOOL),
         'store' => filter_var(env('MODEL_MIND_STORE_RESPONSES', false), FILTER_VALIDATE_BOOL),
     ],
 
@@ -36,12 +37,16 @@ return [
         'middleware' => ['web', 'throttle:model-mind'],
     ],
 
+    'database' => [
+        'table_prefix' => env('MODEL_MIND_TABLE_PREFIX', 'model_mind_'),
+    ],
+
     'memory' => [
-        'recent_messages' => (int) env('MODEL_MIND_RECENT_MESSAGES', 12),
+        'recent_messages' => (int) env('MODEL_MIND_RECENT_MESSAGES', 8),
         'browser_messages' => (int) env('MODEL_MIND_BROWSER_MESSAGES', 60),
-        'message_characters' => (int) env('MODEL_MIND_MESSAGE_CHARACTERS', 1200),
-        'summary_characters' => (int) env('MODEL_MIND_SUMMARY_CHARACTERS', 3000),
-        'context_cache_seconds' => (int) env('MODEL_MIND_CONTEXT_CACHE_SECONDS', 300),
+        'message_characters' => (int) env('MODEL_MIND_MESSAGE_CHARACTERS', 800),
+        'summary_characters' => (int) env('MODEL_MIND_SUMMARY_CHARACTERS', 2000),
+        'context_cache_seconds' => (int) env('MODEL_MIND_CONTEXT_CACHE_SECONDS', 600),
     ],
 
     'models' => [
@@ -69,9 +74,9 @@ return [
     'security' => [
         'auto_discover_models' => false,
         'strip_html' => true,
-        'field_character_limit' => 900,
-        'max_rows_per_model' => 50,
-        'max_context_characters' => 24000,
+        'field_character_limit' => 600,
+        'max_rows_per_model' => 25,
+        'max_context_characters' => 12000,
         'blocked_columns' => [
             'password',
             'remember_token',
@@ -124,6 +129,34 @@ return [
         'voice' => false,
         'streaming' => false,
         'realtime' => false,
+    ],
+
+    'learning' => [
+        'enabled' => filter_var(env('MODEL_MIND_LEARNING_ENABLED', true), FILTER_VALIDATE_BOOL),
+        'from_assistant_answers' => filter_var(env('MODEL_MIND_LEARN_FROM_ASSISTANT_ANSWERS', true), FILTER_VALIDATE_BOOL),
+        'from_liked_answers' => filter_var(env('MODEL_MIND_LEARN_FROM_LIKED_ANSWERS', true), FILTER_VALIDATE_BOOL),
+        'from_fed_texts' => filter_var(env('MODEL_MIND_LEARN_FROM_FED_TEXTS', true), FILTER_VALIDATE_BOOL),
+        'min_characters' => (int) env('MODEL_MIND_LEARNING_MIN_CHARACTERS', 40),
+        'learned_text_characters' => (int) env('MODEL_MIND_LEARNING_TEXT_CHARACTERS', 1200),
+        'context_limit' => (int) env('MODEL_MIND_LEARNING_CONTEXT_LIMIT', 12),
+        'fed_text_limit' => (int) env('MODEL_MIND_FED_TEXT_LIMIT', 20),
+        'blocked_patterns' => [
+            '/sk-[A-Za-z0-9_\-]{16,}/',
+            '/password\s*[:=]/i',
+            '/token\s*[:=]/i',
+            '/secret\s*[:=]/i',
+            '/api[_\s-]?key\s*[:=]/i',
+            '/private[_\s-]?key\s*[:=]/i',
+        ],
+        'fed_texts' => [
+            /*
+            [
+                'title' => 'Support policy',
+                'content' => 'Support replies happen within one business day.',
+                'source' => 'manual',
+            ],
+            */
+        ],
     ],
 
     'prompt' => [

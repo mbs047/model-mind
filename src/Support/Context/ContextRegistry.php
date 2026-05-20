@@ -4,10 +4,14 @@ namespace Mbs\ModelMind\Support\Context;
 
 use Illuminate\Support\Facades\Cache;
 use Mbs\ModelMind\Contracts\ModelMindContextProvider;
+use Mbs\ModelMind\Support\Learning\LearningRepository;
 
 class ContextRegistry
 {
-    public function __construct(private readonly ModelContextBuilder $modelContextBuilder) {}
+    public function __construct(
+        private readonly ModelContextBuilder $modelContextBuilder,
+        private readonly LearningRepository $learningRepository,
+    ) {}
 
     /**
      * @return array<string, mixed>
@@ -40,6 +44,8 @@ class ContextRegistry
         return [
             'source_policy' => config('model-mind.prompt.source_policy'),
             'configured_context' => $this->configuredContext(),
+            'fed_texts' => $this->learningRepository->fedTextContext(),
+            'learned_knowledge' => $this->learningRepository->learnedContext(),
             'models' => $this->modelContexts(),
             'providers' => $this->providerContexts(),
         ];

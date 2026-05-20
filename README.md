@@ -26,6 +26,16 @@ php artisan model-mind:install
 php artisan migrate
 ```
 
+Configure OpenAI:
+
+```env
+OPENAI_API_KEY=sk-your-key
+OPENAI_ORGANIZATION=org-your-organization-id
+MODEL_MIND_MODEL=gpt-5-nano
+```
+
+You may also use `MODEL_MIND_OPENAI_API_KEY` and `MODEL_MIND_OPENAI_ORGANIZATION` when this package should use different credentials than the rest of the app.
+
 By default, the modal ships with the `MBS` brand mark. Override it per app with `MODEL_MIND_BRAND_MARK`.
 
 The widget position is configurable:
@@ -38,6 +48,12 @@ MODEL_MIND_Z_INDEX=9999
 ```
 
 Supported positions: `bottom-right`, `bottom-left`, `bottom-center`, `top-right`, `top-left`, `top-center`, `center`, `center-left`, `center-right`. Short aliases are also accepted: `top`, `bottom`, `left`, and `right`.
+
+Database tables use the `model_mind_` prefix by default. Change it before running migrations if your app needs a different namespace:
+
+```env
+MODEL_MIND_TABLE_PREFIX=assistant_
+```
 
 If installing directly from GitHub before Packagist registration, add a Composer repository:
 
@@ -124,6 +140,38 @@ Before enabling a model in production, inspect the exact context that can be sen
 ```bash
 php artisan model-mind:inspect-context
 php artisan model-mind:inspect-context --json
+```
+
+## Learning
+
+ModelMind can learn from assistant answers, liked answers, manually fed text, and configured text snippets. Learned knowledge is stored in the package memory table and is reused in future prompts.
+
+Feed text from the command line:
+
+```bash
+php artisan model-mind:learn "Warranty coverage lasts one year." --title="Warranty policy"
+```
+
+Or configure reusable fed text in `config/model-mind.php`:
+
+```php
+'learning' => [
+    'fed_texts' => [
+        [
+            'title' => 'Support policy',
+            'content' => 'Support replies happen within one business day.',
+            'source' => 'manual',
+        ],
+    ],
+],
+```
+
+Useful performance defaults:
+
+```env
+MODEL_MIND_MAX_OUTPUT_TOKENS=450
+MODEL_MIND_CONTEXT_CACHE_SECONDS=600
+MODEL_MIND_RETRY_WHEN_TRUNCATED=false
 ```
 
 ## Security Model

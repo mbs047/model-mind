@@ -6,11 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
+use Mbs\ModelMind\Support\Database\TableNames;
 
 class ModelMindSession extends Model
 {
-    protected $table = 'model_mind_sessions';
-
     protected $fillable = [
         'uuid',
         'conversation_summary',
@@ -40,6 +39,11 @@ class ModelMindSession extends Model
     public function messages(): HasMany
     {
         return $this->hasMany(ModelMindMessage::class)->oldest('id');
+    }
+
+    public function getTable(): string
+    {
+        return TableNames::sessions();
     }
 
     public function getRouteKeyName(): string

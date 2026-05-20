@@ -13,6 +13,7 @@ use Mbs\ModelMind\Http\Requests\FeedbackModelMindMessageRequest;
 use Mbs\ModelMind\Models\ModelMindMessage;
 use Mbs\ModelMind\Models\ModelMindSession;
 use Mbs\ModelMind\Support\Actions\ActionExtractor;
+use Mbs\ModelMind\Support\Learning\LearningRepository;
 use Mbs\ModelMind\Support\PromptBuilder;
 use RuntimeException;
 
@@ -23,6 +24,7 @@ class ModelMindController extends Controller
         ModelMindProvider $provider,
         PromptBuilder $promptBuilder,
         ActionExtractor $actions,
+        LearningRepository $learning,
     ): JsonResponse {
         $session = $this->resolveSessionFromUuid($request->validated('session_id'), $request);
         $this->importLegacyHistory($session, $request->validated('history', []));
@@ -58,6 +60,11 @@ class ModelMindController extends Controller
                 ...$response->metadata,
                 'actions' => $prepared['actions'],
             ],
+        ]);
+        $learning->rememberAssistantAnswer($prepared['answer'], [
+            'message_id' => $assistantMessage->uuid,
+            'session_id' => $session->uuid,
+            'question' => $question,
         ]);
         $session->compactForPrompt();
 
@@ -118,6 +125,10 @@ class ModelMindController extends Controller
         ])->save();
 
         $assistantMessage->session?->compactForPrompt();
+
+        if ($assistantMessage->feedback === ModelMindMessage::FEEDBACK_LIKED) {
+            app(LearningRepository::class)->rememberLikedAnswer($assistantMessage);
+        }
 
         return response()->json([
             'feedback' => $assistantMessage->feedback,
