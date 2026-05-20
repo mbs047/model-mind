@@ -15,11 +15,13 @@ The package registers:
 - `POST /model-mind/chat`
 - `POST /model-mind/stream`
 - `GET /model-mind/session`
+- `POST /model-mind/actions/click`
 - `POST /model-mind/messages/{message}/feedback`
 - `GET /api/model-mind/manifest`
 - `POST /api/model-mind/chat`
 - `POST /api/model-mind/stream`
 - `GET /api/model-mind/session`
+- `POST /api/model-mind/actions/click`
 - `POST /api/model-mind/messages/{message}/feedback`
 
 The default web middleware is:

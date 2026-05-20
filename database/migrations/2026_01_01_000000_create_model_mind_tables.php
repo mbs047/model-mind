@@ -59,10 +59,41 @@ return new class extends Migration
                 $table->timestamps();
             });
         }
+
+        if (! Schema::hasTable(TableNames::events())) {
+            Schema::create(TableNames::events(), function (Blueprint $table): void {
+                $table->id();
+                $table->foreignId('model_mind_session_id')->nullable();
+                $table->foreignId('model_mind_message_id')->nullable();
+                $table->uuid('uuid')->unique();
+                $table->string('type')->index();
+                $table->string('provider')->nullable()->index();
+                $table->string('provider_model')->nullable();
+                $table->unsignedInteger('latency_ms')->nullable()->index();
+                $table->unsignedInteger('input_tokens')->nullable();
+                $table->unsignedInteger('output_tokens')->nullable();
+                $table->unsignedInteger('total_tokens')->nullable();
+                $table->json('metadata')->nullable();
+                $table->timestamp('occurred_at')->nullable()->index();
+                $table->timestamps();
+
+                $table->index(['type', 'occurred_at'], 'model_mind_events_type_occurred_index');
+                $table->index(['provider', 'provider_model'], 'model_mind_events_provider_model_index');
+                $table->foreign('model_mind_session_id', 'model_mind_events_session_fk')
+                    ->references('id')
+                    ->on(TableNames::sessions())
+                    ->nullOnDelete();
+                $table->foreign('model_mind_message_id', 'model_mind_events_message_fk')
+                    ->references('id')
+                    ->on(TableNames::messages())
+                    ->nullOnDelete();
+            });
+        }
     }
 
     public function down(): void
     {
+        Schema::dropIfExists(TableNames::events());
         Schema::dropIfExists(TableNames::memories());
         Schema::dropIfExists(TableNames::messages());
         Schema::dropIfExists(TableNames::sessions());

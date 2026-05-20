@@ -41,6 +41,11 @@ class ModelMindSession extends Model
         return $this->hasMany(ModelMindMessage::class)->oldest('id');
     }
 
+    public function events(): HasMany
+    {
+        return $this->hasMany(ModelMindEvent::class, 'model_mind_session_id')->oldest('id');
+    }
+
     public function getTable(): string
     {
         return TableNames::sessions();

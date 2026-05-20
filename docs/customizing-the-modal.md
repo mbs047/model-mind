@@ -130,6 +130,7 @@ Minimum structure:
         'streamEndpoint' => route(config('model-mind.routes.name', 'model-mind.').'stream'),
         'sessionEndpoint' => route(config('model-mind.routes.name', 'model-mind.').'session'),
         'feedbackEndpoint' => url(config('model-mind.routes.prefix', 'model-mind').'/messages'),
+        'actionClickEndpoint' => route(config('model-mind.routes.name', 'model-mind.').'actions.click'),
         'csrfToken' => csrf_token(),
         'initialMessage' => $assistant['initial_message'] ?? null,
         'quickQuestions' => $assistant['default_questions'] ?? $assistant['quick_questions'] ?? [],
@@ -252,6 +253,7 @@ Use `MODEL_MIND_SCRIPTS_ASSET` for a public file. Your script should still post 
 - `POST` to `endpoint` for questions.
 - `POST` to `streamEndpoint` for streamed questions when `streamingEnabled` is true.
 - `GET` to `sessionEndpoint` for history restore.
+- `POST` to `actionClickEndpoint` when a rendered action or citation button is clicked.
 - `POST` to `${feedbackEndpoint}/${messageId}/feedback` for feedback.
 
 Assistant responses can include actions returned by the server. For named-route actions, the server resolves the configured Laravel route and returns the final URL in the same `actions` payload as normal links:

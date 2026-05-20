@@ -16,6 +16,7 @@
         'streamEndpoint' => route(config('model-mind.routes.name', 'model-mind.').'stream'),
         'sessionEndpoint' => route(config('model-mind.routes.name', 'model-mind.').'session'),
         'feedbackEndpoint' => url(config('model-mind.routes.prefix', 'model-mind').'/messages'),
+        'actionClickEndpoint' => route(config('model-mind.routes.name', 'model-mind.').'actions.click'),
         'csrfToken' => csrf_token(),
         'initialMessage' => $assistant['initial_message'] ?? null,
         'quickQuestions' => $configuredQuickQuestions,

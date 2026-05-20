@@ -32,10 +32,7 @@ class GeminiModelMindProvider implements ModelMindProvider, StreamingModelMindPr
             throw new RuntimeException('The ModelMind Gemini response did not include text.');
         }
 
-        return new ModelMindResponseData(trim($answer), [
-            'model' => $this->model(),
-            'provider' => self::DRIVER,
-        ]);
+        return new ModelMindResponseData(trim($answer), $this->metadata($this->model(), $responsePayload));
     }
 
     /**
@@ -163,6 +160,26 @@ class GeminiModelMindProvider implements ModelMindProvider, StreamingModelMindPr
             ->map(fn (array $part): string => (string) ($part['text'] ?? ''))
             ->filter()
             ->implode("\n");
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function metadata(string $model, array $payload): array
+    {
+        return [
+            'model' => $model,
+            'provider' => self::DRIVER,
+            'input_tokens' => $this->intOrNull(Arr::get($payload, 'usageMetadata.promptTokenCount')),
+            'output_tokens' => $this->intOrNull(Arr::get($payload, 'usageMetadata.candidatesTokenCount')),
+            'total_tokens' => $this->intOrNull(Arr::get($payload, 'usageMetadata.totalTokenCount')),
+        ];
+    }
+
+    private function intOrNull(mixed $value): ?int
+    {
+        return is_numeric($value) ? max(0, (int) $value) : null;
     }
 
     /**

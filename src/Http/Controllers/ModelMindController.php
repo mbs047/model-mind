@@ -12,9 +12,11 @@ use Mbs\ModelMind\Data\ModelMindRequestData;
 use Mbs\ModelMind\Data\ModelMindResponseData;
 use Mbs\ModelMind\Http\Requests\AskModelMindRequest;
 use Mbs\ModelMind\Http\Requests\FeedbackModelMindMessageRequest;
+use Mbs\ModelMind\Http\Requests\TrackModelMindActionClickRequest;
 use Mbs\ModelMind\Models\ModelMindMessage;
 use Mbs\ModelMind\Models\ModelMindSession;
 use Mbs\ModelMind\Support\Actions\ActionExtractor;
+use Mbs\ModelMind\Support\Analytics\ModelMindAnalytics;
 use Mbs\ModelMind\Support\Citations\SourceCitationExtractor;
 use Mbs\ModelMind\Support\Learning\LearningRepository;
 use Mbs\ModelMind\Support\PromptBuilder;
@@ -42,12 +44,14 @@ class ModelMindController extends Controller
                 'actions' => (bool) config('model-mind.features.actions', true),
                 'citations' => (bool) config('model-mind.features.citations', true),
                 'streaming' => (bool) config('model-mind.features.streaming', false),
+                'analytics' => (bool) config('model-mind.analytics.enabled', true),
             ],
             'endpoints' => [
                 'chat' => route((string) config('model-mind.api.name', 'model-mind.api.').'chat'),
                 'stream' => route((string) config('model-mind.api.name', 'model-mind.api.').'stream'),
                 'session' => route((string) config('model-mind.api.name', 'model-mind.api.').'session'),
                 'feedback' => $this->apiFeedbackEndpointTemplate(),
+                'action_click' => route((string) config('model-mind.api.name', 'model-mind.api.').'actions.click'),
             ],
             'limits' => [
                 'question_characters' => 2000,
@@ -66,8 +70,10 @@ class ModelMindController extends Controller
         ActionExtractor $actions,
         SourceCitationExtractor $citations,
         LearningRepository $learning,
+        ModelMindAnalytics $analytics,
     ): JsonResponse {
         [$session, $question, $userMessage] = $this->beginAssistantTurn($request);
+        $startedAt = hrtime(true);
 
         try {
             $response = $provider->answer(new ModelMindRequestData(
@@ -78,6 +84,7 @@ class ModelMindController extends Controller
         } catch (RuntimeException $exception) {
             report($exception);
             $session->compactForPrompt();
+            $analytics->recordChatFailed($session, $userMessage, $exception, $this->elapsedMilliseconds($startedAt));
 
             return response()->json([
                 'message' => 'ModelMind is unavailable right now. Please try again soon.',
@@ -92,6 +99,8 @@ class ModelMindController extends Controller
             actions: $actions,
             citations: $citations,
             learning: $learning,
+            analytics: $analytics,
+            latencyMs: $this->elapsedMilliseconds($startedAt),
         );
 
         return response()->json([
@@ -112,6 +121,7 @@ class ModelMindController extends Controller
         ActionExtractor $actions,
         SourceCitationExtractor $citations,
         LearningRepository $learning,
+        ModelMindAnalytics $analytics,
     ): StreamedResponse {
         [$session, $question, $userMessage] = $this->beginAssistantTurn($request);
         $modelMindRequest = new ModelMindRequestData(
@@ -120,18 +130,20 @@ class ModelMindController extends Controller
             session: $session,
         );
 
-        return response()->stream(function () use ($provider, $modelMindRequest, $session, $userMessage, $question, $actions, $citations, $learning): void {
+        return response()->stream(function () use ($provider, $modelMindRequest, $session, $userMessage, $question, $actions, $citations, $learning, $analytics): void {
             $this->sendStreamEvent('ready', [
                 'session_id' => $session->uuid,
                 'expires_at' => $this->sessionExpiresAt($session),
                 'user_message_id' => $userMessage->uuid,
             ]);
+            $startedAt = hrtime(true);
 
             try {
                 $response = $this->streamProviderResponse($provider, $modelMindRequest);
             } catch (RuntimeException $exception) {
                 report($exception);
                 $session->compactForPrompt();
+                $analytics->recordChatFailed($session, $userMessage, $exception, $this->elapsedMilliseconds($startedAt));
 
                 $this->sendStreamEvent('error', [
                     'message' => 'ModelMind is unavailable right now. Please try again soon.',
@@ -148,6 +160,8 @@ class ModelMindController extends Controller
                 actions: $actions,
                 citations: $citations,
                 learning: $learning,
+                analytics: $analytics,
+                latencyMs: $this->elapsedMilliseconds($startedAt),
             );
 
             $this->sendStreamEvent('done', [
@@ -195,6 +209,8 @@ class ModelMindController extends Controller
         ActionExtractor $actions,
         SourceCitationExtractor $citations,
         LearningRepository $learning,
+        ModelMindAnalytics $analytics,
+        int $latencyMs,
     ): array {
         $cited = $citations->prepare($response->answer, $question);
         $prepared = $actions->prepare($cited['answer']);
@@ -206,6 +222,11 @@ class ModelMindController extends Controller
                 'actions' => $prepared['actions'],
                 'citations' => $cited['citations'],
             ],
+        ]);
+        $analytics->recordChatCompleted($session, $assistantMessage, $response->metadata, $latencyMs, [
+            'actions_count' => count($prepared['actions']),
+            'citations_count' => count($cited['citations']),
+            'answer_characters' => mb_strlen($prepared['answer']),
         ]);
         $learning->rememberAssistantAnswer($prepared['answer'], [
             'message_id' => $assistantMessage->uuid,
@@ -310,6 +331,11 @@ class ModelMindController extends Controller
         flush();
     }
 
+    private function elapsedMilliseconds(int $startedAt): int
+    {
+        return max(0, (int) round((hrtime(true) - $startedAt) / 1_000_000));
+    }
+
     public function session(Request $request): JsonResponse
     {
         $requestedSessionId = $this->normalizeUuid($request->query('session_id'));
@@ -345,7 +371,7 @@ class ModelMindController extends Controller
         ]);
     }
 
-    public function feedback(FeedbackModelMindMessageRequest $request, string $message): JsonResponse
+    public function feedback(FeedbackModelMindMessageRequest $request, string $message, ModelMindAnalytics $analytics): JsonResponse
     {
         $assistantMessage = ModelMindMessage::query()
             ->where('uuid', $message)
@@ -368,9 +394,32 @@ class ModelMindController extends Controller
             app(LearningRepository::class)->rememberLikedAnswer($assistantMessage);
         }
 
+        $analytics->recordFeedback($assistantMessage, $request);
+
         return response()->json([
             'feedback' => $assistantMessage->feedback,
         ]);
+    }
+
+    public function actionClick(TrackModelMindActionClickRequest $request, ModelMindAnalytics $analytics): JsonResponse
+    {
+        $session = $this->resolveExistingSession($request->validated('session_id'), $request);
+        $messageId = $request->validated('message_id');
+        $message = is_string($messageId)
+            ? ModelMindMessage::query()->where('uuid', $messageId)->first()
+            : null;
+
+        if (
+            $session instanceof ModelMindSession
+            && $message instanceof ModelMindMessage
+            && (int) $message->model_mind_session_id !== (int) $session->getKey()
+        ) {
+            abort(404);
+        }
+
+        $analytics->recordActionClick($session, $message, $request->validated(), $request);
+
+        return response()->json(['tracked' => true]);
     }
 
     private function resolveSessionFromUuid(?string $uuid, Request $request): ModelMindSession

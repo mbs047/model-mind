@@ -47,9 +47,7 @@ class OpenAiModelMindProvider implements ModelMindProvider, StreamingModelMindPr
             throw new RuntimeException('The ModelMind provider response did not include text.');
         }
 
-        return new ModelMindResponseData(trim($answer), [
-            'model' => $payload['model'],
-        ]);
+        return new ModelMindResponseData(trim($answer), $this->metadata((string) $payload['model'], $responsePayload));
     }
 
     /**
@@ -117,6 +115,7 @@ class OpenAiModelMindProvider implements ModelMindProvider, StreamingModelMindPr
     public function streamMetadata(ModelMindRequestData $request): array
     {
         return [
+            'provider' => self::DRIVER,
             'model' => $this->payload($request)['model'],
         ];
     }
@@ -203,6 +202,30 @@ class OpenAiModelMindProvider implements ModelMindProvider, StreamingModelMindPr
             ->map(fn (array $content): string => (string) ($content['text'] ?? ''))
             ->filter()
             ->implode("\n");
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function metadata(string $model, array $payload): array
+    {
+        $inputTokens = $this->intOrNull(Arr::get($payload, 'usage.input_tokens'));
+        $outputTokens = $this->intOrNull(Arr::get($payload, 'usage.output_tokens'));
+        $totalTokens = $this->intOrNull(Arr::get($payload, 'usage.total_tokens'));
+
+        return [
+            'provider' => self::DRIVER,
+            'model' => $model,
+            'input_tokens' => $inputTokens,
+            'output_tokens' => $outputTokens,
+            'total_tokens' => $totalTokens ?? (($inputTokens !== null || $outputTokens !== null) ? (int) $inputTokens + (int) $outputTokens : null),
+        ];
+    }
+
+    private function intOrNull(mixed $value): ?int
+    {
+        return is_numeric($value) ? max(0, (int) $value) : null;
     }
 
     private function extractStreamDelta(string $line): ?string

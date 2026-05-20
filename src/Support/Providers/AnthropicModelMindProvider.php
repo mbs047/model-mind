@@ -32,10 +32,7 @@ class AnthropicModelMindProvider implements ModelMindProvider, StreamingModelMin
             throw new RuntimeException('The ModelMind Anthropic response did not include text.');
         }
 
-        return new ModelMindResponseData(trim($answer), [
-            'model' => $payload['model'],
-            'provider' => self::DRIVER,
-        ]);
+        return new ModelMindResponseData(trim($answer), $this->metadata((string) $payload['model'], $responsePayload));
     }
 
     /**
@@ -150,6 +147,29 @@ class AnthropicModelMindProvider implements ModelMindProvider, StreamingModelMin
             ->map(fn (array $content): string => (string) ($content['text'] ?? ''))
             ->filter()
             ->implode("\n");
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function metadata(string $model, array $payload): array
+    {
+        $inputTokens = $this->intOrNull(Arr::get($payload, 'usage.input_tokens'));
+        $outputTokens = $this->intOrNull(Arr::get($payload, 'usage.output_tokens'));
+
+        return [
+            'model' => $model,
+            'provider' => self::DRIVER,
+            'input_tokens' => $inputTokens,
+            'output_tokens' => $outputTokens,
+            'total_tokens' => ($inputTokens !== null || $outputTokens !== null) ? (int) $inputTokens + (int) $outputTokens : null,
+        ];
+    }
+
+    private function intOrNull(mixed $value): ?int
+    {
+        return is_numeric($value) ? max(0, (int) $value) : null;
     }
 
     /**

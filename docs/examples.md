@@ -345,9 +345,15 @@ MODEL_MIND_LEARNING_CONTEXT_LIMIT=12
     'feedback' => true,
     'actions' => true,
     'citations' => true,
+    'analytics' => true,
     'voice' => false,
     'streaming' => filter_var(env('MODEL_MIND_STREAMING', true), FILTER_VALIDATE_BOOL),
     'realtime' => false,
+],
+
+'analytics' => [
+    'enabled' => filter_var(env('MODEL_MIND_ANALYTICS_ENABLED', true), FILTER_VALIDATE_BOOL),
+    'summary_days' => 7,
 ],
 
 'actions' => [
@@ -554,6 +560,7 @@ php artisan model-mind:inspect-context --json
 php artisan model-mind:clear-context
 php artisan model-mind:learn "Priority support customers receive a same-day response." --title="Priority support policy"
 php artisan model-mind:preset store --json
+php artisan model-mind:analytics --json
 ```
 
 Headless clients can bootstrap their UI from:
@@ -576,6 +583,7 @@ POST /api/model-mind/stream
 - [Streaming Responses](streaming.md)
 - [Provider Drivers](provider-drivers.md)
 - [Learning Memory](learning-memory.md)
+- [Usage Analytics](analytics.md)
 - [Sessions](sessions.md)
 - [Multilingual Answers](multilingual.md)
 - [Custom AI Providers](ai-providers.md)

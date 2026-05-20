@@ -31,10 +31,7 @@ class OllamaModelMindProvider implements ModelMindProvider, StreamingModelMindPr
             throw new RuntimeException('The ModelMind Ollama response did not include text.');
         }
 
-        return new ModelMindResponseData(trim($answer), [
-            'model' => $this->model(),
-            'provider' => self::DRIVER,
-        ]);
+        return new ModelMindResponseData(trim($answer), $this->metadata($this->model(), $responsePayload));
     }
 
     /**
@@ -155,6 +152,29 @@ class OllamaModelMindProvider implements ModelMindProvider, StreamingModelMindPr
         $response = $payload['response'] ?? null;
 
         return is_string($response) ? $response : '';
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function metadata(string $model, array $payload): array
+    {
+        $inputTokens = $this->intOrNull($payload['prompt_eval_count'] ?? null);
+        $outputTokens = $this->intOrNull($payload['eval_count'] ?? null);
+
+        return [
+            'model' => $model,
+            'provider' => self::DRIVER,
+            'input_tokens' => $inputTokens,
+            'output_tokens' => $outputTokens,
+            'total_tokens' => ($inputTokens !== null || $outputTokens !== null) ? (int) $inputTokens + (int) $outputTokens : null,
+        ];
+    }
+
+    private function intOrNull(mixed $value): ?int
+    {
+        return is_numeric($value) ? max(0, (int) $value) : null;
     }
 
     /**

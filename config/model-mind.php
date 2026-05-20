@@ -676,9 +676,15 @@ return [
         'feedback' => true,
         'actions' => true,
         'citations' => true,
+        'analytics' => true,
         'voice' => false,
         'streaming' => filter_var(env('MODEL_MIND_STREAMING', false), FILTER_VALIDATE_BOOL),
         'realtime' => false,
+    ],
+
+    'analytics' => [
+        'enabled' => filter_var(env('MODEL_MIND_ANALYTICS_ENABLED', true), FILTER_VALIDATE_BOOL),
+        'summary_days' => (int) env('MODEL_MIND_ANALYTICS_SUMMARY_DAYS', 7),
     ],
 
     'actions' => [

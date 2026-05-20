@@ -31,6 +31,7 @@ This page is the compact starting point for ModelMind. Each major feature now ha
 - [Security Controls](security.md)
 - [Learning Memory](learning-memory.md)
 - [Feedback](feedback.md)
+- [Usage Analytics](analytics.md)
 - [Sessions](sessions.md)
 - [Multilingual Answers](multilingual.md)
 - [Streaming Responses](streaming.md)

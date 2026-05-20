@@ -37,6 +37,7 @@ Default endpoints:
 - `POST /api/model-mind/chat`
 - `POST /api/model-mind/stream`
 - `GET /api/model-mind/session?session_id={session_id}`
+- `POST /api/model-mind/actions/click`
 - `POST /api/model-mind/messages/{message}/feedback`
 
 The web Blade modal still uses the existing `/model-mind/*` web routes. API mode is separate so custom clients can be stateless and carry `session_id` themselves.
@@ -62,12 +63,14 @@ Response:
         "feedback": true,
         "actions": true,
         "citations": true,
-        "streaming": false
+        "streaming": false,
+        "analytics": true
     },
     "endpoints": {
         "chat": "https://example.test/api/model-mind/chat",
         "stream": "https://example.test/api/model-mind/stream",
         "session": "https://example.test/api/model-mind/session",
+        "action_click": "https://example.test/api/model-mind/actions/click",
         "feedback": "https://example.test/api/model-mind/messages/{message}/feedback"
     },
     "limits": {
@@ -195,6 +198,28 @@ Content-Type: application/json
 }
 ```
 
+## Track Action Clicks
+
+When rendering action or citation buttons in a custom UI, post clicks to the action-click endpoint so usage analytics can report engagement.
+
+```http
+POST /api/model-mind/actions/click
+Accept: application/json
+Content-Type: application/json
+```
+
+```json
+{
+    "session_id": "9c575b06-8c3f-4b62-82e1-3c50859e6fd8",
+    "message_id": "d9d54b44-14d7-4779-b91d-96abcc0dd5ec",
+    "label": "View Samsung Galaxy S24 Ultra",
+    "url": "https://example.test/products/1",
+    "kind": "route",
+    "source": "action",
+    "index": 0
+}
+```
+
 ## JavaScript Example
 
 ```js
@@ -225,6 +250,7 @@ localStorage.setItem('modelmind_session_id', response.session_id);
 - For streaming, render `delta` as draft text and replace it with `done.answer`.
 - Render `actions` as trusted buttons or links.
 - Render `citations` as source cards if you want auditability.
+- Send action-click analytics when users click rendered action or citation buttons.
 - Send feedback only for assistant `message_id` values.
 - Use your normal API authentication and CORS policy for external clients.
 

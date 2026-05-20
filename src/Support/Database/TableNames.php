@@ -19,6 +19,11 @@ class TableNames
         return self::prefix().'memories';
     }
 
+    public static function events(): string
+    {
+        return self::prefix().'events';
+    }
+
     private static function prefix(): string
     {
         $prefix = config('model-mind.database.table_prefix', 'model_mind_');

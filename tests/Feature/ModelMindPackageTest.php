@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Mbs\ModelMind\Contracts\ModelMindProvider;
+use Mbs\ModelMind\Models\ModelMindEvent;
 use Mbs\ModelMind\Models\ModelMindMemory;
 use Mbs\ModelMind\Models\ModelMindMessage;
 use Mbs\ModelMind\Models\ModelMindSession;
@@ -97,6 +98,7 @@ class ModelMindPackageTest extends TestCase
         $this->assertStringContainsString(route('model-mind.chat'), $html);
         $this->assertStringContainsString(route('model-mind.stream'), $html);
         $this->assertStringContainsString(route('model-mind.session'), $html);
+        $this->assertStringContainsString(route('model-mind.actions.click'), $html);
         $this->assertStringContainsString('"streamingEnabled":false', $html);
         $this->assertStringContainsString('Ask ModelMind', $html);
         $this->assertStringContainsString('Helpful', $html);
@@ -126,9 +128,11 @@ class ModelMindPackageTest extends TestCase
         $this->assertSame('assistant_sessions', TableNames::sessions());
         $this->assertSame('assistant_messages', TableNames::messages());
         $this->assertSame('assistant_memories', TableNames::memories());
+        $this->assertSame('assistant_events', TableNames::events());
         $this->assertSame('assistant_sessions', (new ModelMindSession)->getTable());
         $this->assertSame('assistant_messages', (new ModelMindMessage)->getTable());
         $this->assertSame('assistant_memories', (new ModelMindMemory)->getTable());
+        $this->assertSame('assistant_events', (new ModelMindEvent)->getTable());
     }
 
     public function test_default_questions_and_session_lifetime_are_configurable(): void
@@ -222,9 +226,11 @@ class ModelMindPackageTest extends TestCase
             ->assertJsonPath('features.actions', true)
             ->assertJsonPath('features.citations', true)
             ->assertJsonPath('features.streaming', false)
+            ->assertJsonPath('features.analytics', true)
             ->assertJsonPath('endpoints.chat', route('model-mind.api.chat'))
             ->assertJsonPath('endpoints.stream', route('model-mind.api.stream'))
             ->assertJsonPath('endpoints.session', route('model-mind.api.session'))
+            ->assertJsonPath('endpoints.action_click', route('model-mind.api.actions.click'))
             ->assertJsonPath('limits.question_characters', 2000)
             ->assertJsonPath('session_lifetime_minutes', 120);
 
@@ -500,6 +506,7 @@ class ModelMindPackageTest extends TestCase
         $this->assertTrue(Schema::hasTable(TableNames::sessions()));
         $this->assertTrue(Schema::hasTable(TableNames::messages()));
         $this->assertTrue(Schema::hasTable(TableNames::memories()));
+        $this->assertTrue(Schema::hasTable(TableNames::events()));
     }
 
     public function test_context_filters_sensitive_columns_and_hidden_records(): void
@@ -692,6 +699,11 @@ class ModelMindPackageTest extends TestCase
 
                 return Http::response([
                     'output_text' => 'Support replies happen within one business day. Read more at https://example.com/support.',
+                    'usage' => [
+                        'input_tokens' => 42,
+                        'output_tokens' => 18,
+                        'total_tokens' => 60,
+                    ],
                 ]);
             },
         ]);
@@ -715,6 +727,112 @@ class ModelMindPackageTest extends TestCase
             'title' => 'Assistant answer',
             'content' => 'Support replies happen within one business day. Read more.',
         ]);
+        $this->assertDatabaseHas('model_mind_events', [
+            'type' => ModelMindEvent::TYPE_CHAT_COMPLETED,
+            'provider' => 'openai',
+            'provider_model' => 'gpt-test',
+            'input_tokens' => 42,
+            'output_tokens' => 18,
+            'total_tokens' => 60,
+        ]);
+    }
+
+    public function test_chat_failures_are_tracked_without_breaking_error_response(): void
+    {
+        Http::fake([
+            'api.openai.com/v1/responses' => fn () => Http::response(['error' => 'nope'], 500),
+        ]);
+
+        $this->postJson(route('model-mind.chat'), [
+            'question' => 'Will this fail?',
+        ])
+            ->assertStatus(503)
+            ->assertJsonPath('message', 'ModelMind is unavailable right now. Please try again soon.');
+
+        $this->assertDatabaseHas('model_mind_events', [
+            'type' => ModelMindEvent::TYPE_CHAT_FAILED,
+            'provider' => 'openai',
+            'provider_model' => 'gpt-test',
+        ]);
+    }
+
+    public function test_feedback_and_action_clicks_are_tracked(): void
+    {
+        $session = ModelMindSession::query()->create();
+        $assistantMessage = $session->messages()->create([
+            'role' => ModelMindMessage::ROLE_ASSISTANT,
+            'content' => 'Open the product page.',
+            'metadata' => [
+                'actions' => [[
+                    'label' => 'View product',
+                    'url' => url('/knowledge/1'),
+                    'kind' => 'route',
+                ]],
+            ],
+        ]);
+
+        $this->postJson(route('model-mind.messages.feedback', $assistantMessage), [
+            'session_id' => $session->uuid,
+            'feedback' => ModelMindMessage::FEEDBACK_LIKED,
+        ])->assertOk();
+
+        $this->postJson(route('model-mind.actions.click'), [
+            'session_id' => $session->uuid,
+            'message_id' => $assistantMessage->uuid,
+            'label' => 'View product',
+            'url' => url('/knowledge/1'),
+            'kind' => 'route',
+            'source' => 'action',
+            'index' => 0,
+        ])->assertOk()->assertJsonPath('tracked', true);
+
+        $this->assertDatabaseHas('model_mind_events', [
+            'type' => ModelMindEvent::TYPE_FEEDBACK_SUBMITTED,
+            'model_mind_message_id' => $assistantMessage->id,
+        ]);
+        $this->assertDatabaseHas('model_mind_events', [
+            'type' => ModelMindEvent::TYPE_ACTION_CLICKED,
+            'model_mind_message_id' => $assistantMessage->id,
+        ]);
+    }
+
+    public function test_analytics_command_summarizes_usage(): void
+    {
+        $session = ModelMindSession::query()->create();
+        $message = $session->messages()->create([
+            'role' => ModelMindMessage::ROLE_ASSISTANT,
+            'content' => 'Analytics answer.',
+        ]);
+        ModelMindEvent::query()->create([
+            'model_mind_session_id' => $session->id,
+            'model_mind_message_id' => $message->id,
+            'type' => ModelMindEvent::TYPE_CHAT_COMPLETED,
+            'provider' => 'openai',
+            'provider_model' => 'gpt-test',
+            'latency_ms' => 120,
+            'input_tokens' => 10,
+            'output_tokens' => 5,
+            'total_tokens' => 15,
+        ]);
+        ModelMindEvent::query()->create([
+            'model_mind_session_id' => $session->id,
+            'model_mind_message_id' => $message->id,
+            'type' => ModelMindEvent::TYPE_ACTION_CLICKED,
+            'metadata' => ['label' => 'View product', 'kind' => 'route'],
+        ]);
+
+        Artisan::call('model-mind:analytics', [
+            '--json' => true,
+            '--days' => 1,
+        ]);
+
+        $payload = json_decode(Artisan::output(), true);
+
+        $this->assertIsArray($payload);
+        $this->assertSame(1, $payload['totals']['completed']);
+        $this->assertSame(1, $payload['totals']['action_clicks']);
+        $this->assertSame(15, $payload['totals']['total_tokens']);
+        $this->assertSame('openai', $payload['providers'][0]['provider']);
     }
 
     public function test_chat_endpoint_returns_source_citations_for_used_model_records(): void

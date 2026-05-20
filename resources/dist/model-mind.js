@@ -263,10 +263,42 @@
             }
         };
 
-        const handleAction = (action) => {
+        const trackActionClick = (action, message = null, source = 'unknown', index = 0) => {
+            if (!config.actionClickEndpoint || !action?.url) {
+                return;
+            }
+
+            try {
+                fetch(config.actionClickEndpoint, {
+                    method: 'POST',
+                    keepalive: true,
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': config.csrfToken,
+                    },
+                    body: JSON.stringify({
+                        _token: config.csrfToken,
+                        session_id: state.sessionId,
+                        message_id: message?.id || null,
+                        label: action.label || null,
+                        url: action.url,
+                        kind: action.kind || null,
+                        source,
+                        index,
+                    }),
+                }).catch(() => {});
+            } catch (error) {
+                // Analytics should never block navigation.
+            }
+        };
+
+        const handleAction = (action, message = null, source = 'unknown', index = 0) => {
             if (!action?.url) {
                 return;
             }
+
+            trackActionClick(action, message, source, index);
 
             const url = new URL(action.url, window.location.href);
 
@@ -285,7 +317,7 @@
 
             return createElement('div', {
                 className: 'mt-2 flex flex-wrap gap-2',
-                children: message.actions.map((action) => {
+                children: message.actions.map((action, index) => {
                     const actionButton = createElement('button', {
                         className: 'inline-flex max-w-full items-center gap-1.5 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition hover:border-slate-400 hover:text-slate-950 dark:border-white/10 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-white/25',
                         attributes: { type: 'button' },
@@ -295,7 +327,7 @@
                         ],
                     });
 
-                    actionButton.addEventListener('click', () => handleAction(action));
+                    actionButton.addEventListener('click', () => handleAction(action, message, 'action', index));
 
                     return actionButton;
                 }),
@@ -314,7 +346,7 @@
                         className: 'px-1 text-[0.68rem] font-black uppercase tracking-normal text-slate-500 dark:text-slate-400',
                         text: 'Sources',
                     }),
-                    ...message.citations.map((citation) => {
+                    ...message.citations.map((citation, index) => {
                         const sourceAction = citation.action?.url
                             ? createElement('button', {
                                 className: 'rounded-full border border-slate-200 px-2.5 py-1 text-[0.68rem] font-black text-slate-700 transition hover:border-slate-400 hover:text-slate-950 dark:border-white/10 dark:text-slate-200 dark:hover:border-white/25',
@@ -324,7 +356,7 @@
                             : null;
 
                         if (sourceAction) {
-                            sourceAction.addEventListener('click', () => handleAction(citation.action));
+                            sourceAction.addEventListener('click', () => handleAction(citation.action, message, 'citation', index));
                         }
 
                         return createElement('div', {

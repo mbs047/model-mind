@@ -6,6 +6,8 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+## v1.0.14 - 2026-05-21
+
 ### Added
 
 - Ranked question-aware retrieval with weighted columns, retrieval scores, fuzzy typo matching, and multilingual normalization.
@@ -18,6 +20,9 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - Config-driven provider drivers for OpenAI, Anthropic, Gemini, Ollama, and custom provider classes.
 - Built-in Anthropic, Gemini, and Ollama provider implementations with streaming support.
 - Provider driver documentation with environment examples for each supported backend.
+- Usage analytics events for completed answers, failures, feedback submissions, and route/action clicks.
+- `model-mind:analytics` command plus `ModelMindAnalyticsRecorded` event for dashboard integrations.
+- Provider/model latency and token usage capture when provider usage metadata is available.
 
 ## v1.0.13 - 2026-05-21
 
