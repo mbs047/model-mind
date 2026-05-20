@@ -6,6 +6,8 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+## v1.0.8 - 2026-05-20
+
 ### Added
 
 - Configurable default questions through `assistant.default_questions` and `MODEL_MIND_DEFAULT_QUESTIONS`.
