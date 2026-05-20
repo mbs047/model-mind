@@ -28,6 +28,7 @@ This page is the compact starting point for ModelMind. Each major feature now ha
 - [Learning Memory](learning-memory.md)
 - [Feedback](feedback.md)
 - [Sessions](sessions.md)
+- [Multilingual Answers](multilingual.md)
 - [Database Tables](database-tables.md)
 - [Public Assets](public-assets.md)
 - [Customizing the Chat Modal](customizing-the-modal.md)

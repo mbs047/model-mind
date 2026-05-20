@@ -6,6 +6,10 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+### Added
+
+- Documentation for multilingual answers from a single-language application database.
+
 ## v1.0.8 - 2026-05-20
 
 ### Added

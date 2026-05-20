@@ -92,6 +92,7 @@ OPENAI_ORGANIZATION=org-your-organization-id
 MODEL_MIND_NAME=ModelMind
 MODEL_MIND_BRAND_MARK=MBS
 MODEL_MIND_SUBTITLE="AI assistant powered by your application data"
+MODEL_MIND_LANGUAGE="Answer in the same language as the latest visitor message unless explicitly asked otherwise."
 MODEL_MIND_MODEL=gpt-5-nano
 MODEL_MIND_TIMEOUT=12
 MODEL_MIND_CONNECT_TIMEOUT=3
@@ -503,6 +504,7 @@ php artisan model-mind:learn "Priority support customers receive a same-day resp
 - [Named Route Actions](route-actions.md)
 - [Learning Memory](learning-memory.md)
 - [Sessions](sessions.md)
+- [Multilingual Answers](multilingual.md)
 - [Custom AI Providers](ai-providers.md)
 - [Customizing the Chat Modal](customizing-the-modal.md)
 - [Public Assets](public-assets.md)
