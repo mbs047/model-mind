@@ -108,7 +108,7 @@ Supported widget positions are `bottom-right`, `bottom-left`, `bottom-center`, `
 
 ## Full Documentation
 
-Read the documentation index in [docs/README.md](docs/README.md). Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, model configuration, retrieval, route actions, security, learning memory, feedback, table prefixes, providers, routes, performance, and testing.
+Read the documentation index in [docs/README.md](docs/README.md). Start with [docs/examples.md](docs/examples.md) for simple and advanced copyable setups. Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, model configuration, retrieval, route actions, security, learning memory, feedback, table prefixes, providers, routes, performance, and testing.
 
 For custom UI work, read [docs/customizing-the-modal.md](docs/customizing-the-modal.md). You can publish the default Blade views, or point ModelMind to a completely new modal, styles, and script from config.
 

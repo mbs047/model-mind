@@ -12,6 +12,8 @@ ModelMind can turn approved Laravel named routes into clickable chat buttons. Th
         'route_actions' => [
             'products.view' => [
                 'label' => 'View product',
+                'label_column' => 'name',
+                'label_template' => 'View {name}',
                 'description' => 'Open the product detail page.',
                 'route' => 'products.show',
                 'parameters' => ['product' => 'id'],
@@ -69,6 +71,35 @@ When a row has enough data to build a route action, ModelMind adds a route token
 ```
 
 The AI is instructed to copy only approved route tokens. The server validates the key and parameter names, generates the URL with Laravel's `route()` helper, removes the token from the visible answer, and returns a button action.
+
+## Button Labels
+
+Use `label` for a static button label:
+
+```php
+'label' => 'View product',
+```
+
+For repeated record actions, use `label_column` to show the record value instead of repeating the same static label:
+
+```php
+'label' => 'View product',
+'label_column' => 'name',
+```
+
+With `label_column`, buttons can render as `Samsung Galaxy S24 Ultra`, `Sony WH-1000XM5 Headphones`, and so on.
+
+For the most polished result, use `label_template`:
+
+```php
+'label' => 'View product',
+'label_column' => 'name',
+'label_template' => 'View {name}',
+```
+
+Templates can use model column placeholders such as `{name}`, `{sku}`, `{title}`, plus `{label}` for the static label and `{value}` for the configured `label_column` value.
+
+Dynamic labels are resolved server-side from the configured model record, not trusted from the AI response. Global route actions without a model continue to use the static `label` unless `allow_label_override` is enabled.
 
 ## Settings
 

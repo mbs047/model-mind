@@ -64,6 +64,8 @@ return [
             'route_actions' => [
                 'products.view' => [
                     'label' => 'View product',
+                    'label_column' => 'name',
+                    'label_template' => 'View {name}',
                     'route' => 'products.show',
                     'parameters' => ['product' => 'id'],
                 ],
@@ -196,6 +198,8 @@ return [
             /*
             'products.view' => [
                 'label' => 'View product',
+                'label_column' => 'name',
+                'label_template' => 'View {name}',
                 'description' => 'Open the product detail page.',
                 'route' => 'products.show',
                 'parameters' => ['product' => 'id'],

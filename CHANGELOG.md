@@ -6,6 +6,12 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+### Added
+
+- Simple and advanced documentation examples that combine the package's main configuration features.
+- Dynamic named-route action labels through `label_column` and `label_template`.
+- GitHub Sponsors funding metadata.
+
 ## v1.0.6 - 2026-05-20
 
 ### Added

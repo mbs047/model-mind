@@ -115,7 +115,7 @@ PROMPT;
         }
 
         return [
-            'label' => $this->label($definition, $label),
+            'label' => $this->label($definition, $routeParameters, $label),
             'url' => $url,
             'kind' => $definition['kind'],
         ];
@@ -165,7 +165,7 @@ PROMPT;
 
                 return [
                     'key' => $definition['key'],
-                    'label' => $definition['label'],
+                    'label' => $this->labelForRecord($definition, $record),
                     'token' => $this->tokenFor($definition['key'], $parameters),
                 ];
             })
@@ -211,7 +211,7 @@ PROMPT;
     }
 
     /**
-     * @return array{key: string, label: string, description: string, route: string, parameters: array<string, string>, kind: string, model: class-string<Model>|null}|null
+     * @return array{key: string, label: string, label_column: string, label_template: string, description: string, route: string, parameters: array<string, string>, kind: string, model: class-string<Model>|null}|null
      */
     private function normalizeDefinition(string|int $key, mixed $settings, ?string $modelClass = null): ?array
     {
@@ -235,6 +235,8 @@ PROMPT;
         return [
             'key' => $key,
             'label' => $this->cleanLabel($settings['label'] ?? str($key)->headline()->toString()),
+            'label_column' => $this->cleanColumnName($settings['label_column'] ?? $settings['label_from'] ?? ''),
+            'label_template' => $this->cleanLabelTemplate($settings['label_template'] ?? ''),
             'description' => $this->cleanDescription($settings['description'] ?? ''),
             'route' => $route,
             'parameters' => $this->normalizeParameters($settings['parameters'] ?? []),
@@ -296,13 +298,93 @@ PROMPT;
             : 'model_mind_route';
     }
 
-    private function label(array $definition, ?string $label): string
+    /**
+     * @param  array<string, mixed>  $definition
+     * @param  array<string, string>  $routeParameters
+     */
+    private function label(array $definition, array $routeParameters, ?string $label): string
     {
+        $recordLabel = $this->labelForRouteParameters($definition, $routeParameters);
+
+        if ($recordLabel !== null) {
+            return $recordLabel;
+        }
+
         if ((bool) config('model-mind.actions.allow_label_override', false) && is_string($label) && filled($label)) {
             return $this->cleanLabel($label);
         }
 
         return $definition['label'];
+    }
+
+    /**
+     * @param  array<string, mixed>  $definition
+     * @param  array<string, string>  $routeParameters
+     */
+    private function labelForRouteParameters(array $definition, array $routeParameters): ?string
+    {
+        if (
+            ! is_string($definition['model'] ?? null)
+            || (blank($definition['label_column'] ?? '') && blank($definition['label_template'] ?? ''))
+            || ! is_subclass_of($definition['model'], Model::class)
+        ) {
+            return null;
+        }
+
+        foreach ((array) ($definition['parameters'] ?? []) as $routeName => $sourceColumn) {
+            if (! is_string($routeName) || ! is_string($sourceColumn) || ! array_key_exists($routeName, $routeParameters)) {
+                continue;
+            }
+
+            try {
+                /** @var class-string<Model> $modelClass */
+                $modelClass = $definition['model'];
+                $record = $modelClass::query()
+                    ->where($sourceColumn, $routeParameters[$routeName])
+                    ->first();
+            } catch (Throwable) {
+                return null;
+            }
+
+            return $record instanceof Model
+                ? $this->labelForRecord($definition, $record)
+                : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $definition
+     */
+    private function labelForRecord(array $definition, Model $record): string
+    {
+        $column = is_string($definition['label_column'] ?? null) ? $definition['label_column'] : '';
+        $value = $column !== '' ? $record->getAttribute($column) : null;
+        $value = is_scalar($value) ? $this->cleanLabel($value) : '';
+        $template = is_string($definition['label_template'] ?? null) ? $definition['label_template'] : '';
+
+        if ($template !== '') {
+            $rendered = preg_replace_callback('/\{([A-Za-z_][A-Za-z0-9_]*)\}/', function (array $match) use ($definition, $record, $value): string {
+                $placeholder = (string) ($match[1] ?? '');
+
+                if ($placeholder === 'label') {
+                    return (string) $definition['label'];
+                }
+
+                if ($placeholder === 'value') {
+                    return $value;
+                }
+
+                $attribute = $record->getAttribute($placeholder);
+
+                return is_scalar($attribute) ? $this->cleanLabel($attribute) : '';
+            }, $template) ?? $template;
+
+            return $this->cleanLabel($rendered);
+        }
+
+        return $value !== '' ? $value : (string) $definition['label'];
     }
 
     private function cleanKey(string $key): string
@@ -313,6 +395,23 @@ PROMPT;
     private function cleanParameterName(string $name): string
     {
         return preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name) === 1 ? $name : '';
+    }
+
+    private function cleanColumnName(mixed $name): string
+    {
+        return is_string($name) && preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $name) === 1 ? $name : '';
+    }
+
+    private function cleanLabelTemplate(mixed $template): string
+    {
+        if (! is_scalar($template)) {
+            return '';
+        }
+
+        return str(strip_tags((string) $template))
+            ->squish()
+            ->limit(120, '')
+            ->toString();
     }
 
     private function cleanParameterValue(string $value): string

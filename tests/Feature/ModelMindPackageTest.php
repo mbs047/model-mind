@@ -355,6 +355,53 @@ class ModelMindPackageTest extends TestCase
         ]);
     }
 
+    public function test_route_actions_can_use_record_label_columns_and_templates(): void
+    {
+        config()->set('model-mind.models', [
+            KnowledgeEntry::class => [
+                'enabled' => true,
+                'columns' => 'auto',
+                'limit' => 10,
+                'route_actions' => [
+                    'knowledge.view' => [
+                        'label' => 'Open knowledge',
+                        'label_column' => 'title',
+                        'label_template' => 'Open {title}',
+                        'route' => 'knowledge.show',
+                        'parameters' => ['entry' => 'id'],
+                    ],
+                ],
+            ],
+        ]);
+
+        $entry = KnowledgeEntry::query()->create([
+            'title' => 'Samsung Galaxy S24 Ultra',
+            'body' => 'Large-screen Android flagship.',
+            'is_public' => true,
+        ]);
+
+        $context = app(ContextRegistry::class)->toPrompt('samsung s24');
+
+        $this->assertStringContainsString('Open Samsung Galaxy S24 Ultra', $context);
+
+        Http::fake([
+            'api.openai.com/v1/responses' => fn () => Http::response([
+                'output_text' => "Here is the product.\n[[model_mind_route key=\"knowledge.view\" entry=\"{$entry->id}\"]]",
+            ]),
+        ]);
+
+        $response = $this->postJson(route('model-mind.chat'), [
+            'question' => 'samsung s24?',
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('answer', 'Here is the product.')
+            ->assertJsonPath('actions.0.label', 'Open Samsung Galaxy S24 Ultra')
+            ->assertJsonPath('actions.0.kind', 'route')
+            ->assertJsonPath('actions.0.url', url("/knowledge/{$entry->id}"));
+    }
+
     public function test_feedback_and_manual_learning_feed_future_context(): void
     {
         $session = ModelMindSession::query()->create();

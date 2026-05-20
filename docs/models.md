@@ -31,6 +31,7 @@ ModelMind only reads models that are explicitly enabled in `config/model-mind.ph
 - `order_by`: column and direction pairs used to sort records.
 - `search_columns`: allowed columns used by question-aware retrieval.
 - `route_actions`: safe Laravel named-route actions that can become chat buttons.
+- `label_column` and `label_template`: optional route action settings for record-specific button labels.
 
 ## Inspect Context
 

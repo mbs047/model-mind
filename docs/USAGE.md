@@ -5,14 +5,16 @@ This page is the compact starting point for ModelMind. Each major feature now ha
 ## Start Here
 
 1. Install the package: [Installation](installation.md)
-2. Configure OpenAI: [OpenAI Configuration](openai.md)
-3. Render the widget: [Blade Rendering](blade-rendering.md)
-4. Enable application data: [Models and Context](models.md)
-5. Inspect what the assistant can see: [Security Controls](security.md)
+2. Copy a starting setup: [Examples](examples.md)
+3. Configure OpenAI: [OpenAI Configuration](openai.md)
+4. Render the widget: [Blade Rendering](blade-rendering.md)
+5. Enable application data: [Models and Context](models.md)
+6. Inspect what the assistant can see: [Security Controls](security.md)
 
 ## Feature Guides
 
 - [Installation](installation.md)
+- [Examples](examples.md)
 - [OpenAI Configuration](openai.md)
 - [Blade Rendering](blade-rendering.md)
 - [UI, Themes, and Positioning](ui-themes-and-positioning.md)
@@ -50,3 +52,5 @@ MODEL_MIND_MODEL=gpt-5-nano
 ```blade
 @modelMind
 ```
+
+For repeated route buttons, configure `label_column` or `label_template` so actions can show record-specific labels such as `View Samsung Galaxy S24 Ultra`.
