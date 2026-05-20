@@ -13,6 +13,7 @@
         ->all();
     $modelMindConfig = [
         'endpoint' => route(config('model-mind.routes.name', 'model-mind.').'chat'),
+        'streamEndpoint' => route(config('model-mind.routes.name', 'model-mind.').'stream'),
         'sessionEndpoint' => route(config('model-mind.routes.name', 'model-mind.').'session'),
         'feedbackEndpoint' => url(config('model-mind.routes.prefix', 'model-mind').'/messages'),
         'csrfToken' => csrf_token(),
@@ -24,6 +25,7 @@
         'historyMessages' => (int) config('model-mind.memory.recent_messages', 12),
         'sessionLifetimeMinutes' => max(0, (int) config('model-mind.memory.session_lifetime_minutes', 120)),
         'feedbackEnabled' => (bool) config('model-mind.features.feedback', true),
+        'streamingEnabled' => (bool) config('model-mind.features.streaming', false),
     ];
     $ui = config('model-mind.ui', []);
     $normalizeCssLength = function (mixed $value, string $fallback): string {

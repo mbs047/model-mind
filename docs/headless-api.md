@@ -35,6 +35,7 @@ Default endpoints:
 
 - `GET /api/model-mind/manifest`
 - `POST /api/model-mind/chat`
+- `POST /api/model-mind/stream`
 - `GET /api/model-mind/session?session_id={session_id}`
 - `POST /api/model-mind/messages/{message}/feedback`
 
@@ -60,10 +61,12 @@ Response:
     "features": {
         "feedback": true,
         "actions": true,
-        "citations": true
+        "citations": true,
+        "streaming": false
     },
     "endpoints": {
         "chat": "https://example.test/api/model-mind/chat",
+        "stream": "https://example.test/api/model-mind/stream",
         "session": "https://example.test/api/model-mind/session",
         "feedback": "https://example.test/api/model-mind/messages/{message}/feedback"
     },
@@ -129,6 +132,20 @@ Response:
 ```
 
 Store the returned `session_id` in your client and send it with future questions.
+
+## Stream a Message
+
+When `MODEL_MIND_STREAMING=true`, custom clients can call the stream endpoint and render text from `delta` events before the final response is complete.
+
+```http
+POST /api/model-mind/stream
+Accept: application/json, text/event-stream
+Content-Type: application/json
+```
+
+The stream emits `ready`, `delta`, `done`, and `error` Server-Sent Events. Use the final `done` event as the saved response because it contains the cleaned answer, safe route actions, source citations, session ID, and assistant message ID.
+
+See [Streaming Responses](streaming.md) for a full parser example.
 
 ## Restore a Session
 
@@ -205,6 +222,7 @@ localStorage.setItem('modelmind_session_id', response.session_id);
 - Send `Accept: application/json`.
 - Store and resend `session_id`.
 - Render `answer` as text.
+- For streaming, render `delta` as draft text and replace it with `done.answer`.
 - Render `actions` as trusted buttons or links.
 - Render `citations` as source cards if you want auditability.
 - Send feedback only for assistant `message_id` values.

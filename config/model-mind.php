@@ -634,7 +634,7 @@ return [
         'actions' => true,
         'citations' => true,
         'voice' => false,
-        'streaming' => false,
+        'streaming' => filter_var(env('MODEL_MIND_STREAMING', false), FILTER_VALIDATE_BOOL),
         'realtime' => false,
     ],
 

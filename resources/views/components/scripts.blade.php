@@ -75,6 +75,7 @@
                 nextLocalId: 1,
                 storageKey: config.storageKey || 'model-mind-state',
                 feedbackEnabled: Boolean(config.feedbackEnabled ?? true),
+                streamingEnabled: Boolean(config.streamingEnabled && config.streamEndpoint && window.ReadableStream),
                 browserMessageLimit: Math.max(30, Number(config.browserMessages) || 60),
                 historyMessageLimit: Math.max(8, Number(config.historyMessages) || 12),
                 sessionLifetimeMinutes: Math.max(0, Number(config.sessionLifetimeMinutes) || 0),
@@ -414,7 +415,7 @@
                     ? 'rounded-br-md bg-slate-950 font-semibold text-white dark:bg-white dark:text-slate-950'
                     : 'rounded-bl-md border border-slate-200 bg-white text-slate-800 dark:border-white/10 dark:bg-slate-950 dark:text-slate-100';
 
-                const bubbleContent = message.pendingAssistant
+                const bubbleContent = message.pendingAssistant && !message.content
                     ? createElement('span', {
                         className: 'inline-flex items-center gap-1 font-semibold text-slate-500',
                         children: [
@@ -510,6 +511,180 @@
                 }
             };
 
+            const requestPayload = (text, userMessage) => ({
+                session_id: state.sessionId,
+                question: text,
+                history: recentHistory(userMessage.localId),
+            });
+
+            const applyFinalPayload = (payload, userMessage, pendingMessage) => {
+                state.sessionId = payload.session_id || state.sessionId;
+                state.sessionExpiresAt = payload.expires_at || nextSessionExpiresAt();
+                userMessage.id = payload.user_message_id || userMessage.id || null;
+                state.messages = state.messages.filter((message) => message.localId !== pendingMessage.localId);
+                state.messages.push({
+                    localId: `local-${state.nextLocalId++}`,
+                    id: payload.message_id || null,
+                    role: 'assistant',
+                    content: payload.answer || pendingMessage.content || fallbackAnswer,
+                    actions: Array.isArray(payload.actions) ? payload.actions : [],
+                    citations: Array.isArray(payload.citations) ? payload.citations : [],
+                    feedback: null,
+                });
+            };
+
+            const jsonPayload = async (response) => response.json().catch(() => ({}));
+
+            const sendJsonMessage = async (text, userMessage, pendingMessage) => {
+                const response = await fetch(config.endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': config.csrfToken,
+                    },
+                    body: JSON.stringify(requestPayload(text, userMessage)),
+                });
+                const payload = await jsonPayload(response);
+
+                if (response.status === 422) {
+                    state.failure = Object.values(payload.errors || {})?.[0]?.[0] || 'Please ask a shorter question.';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(payload.message || 'ModelMind is unavailable right now.');
+                }
+
+                applyFinalPayload(payload, userMessage, pendingMessage);
+            };
+
+            const readStream = async (response, handlers) => {
+                const reader = response.body?.getReader();
+
+                if (!reader) {
+                    throw new Error('Streaming is not supported by this browser.');
+                }
+
+                const decoder = new TextDecoder();
+                let buffer = '';
+
+                const parseEvent = (rawEvent) => {
+                    const lines = rawEvent.split('\n');
+                    let eventName = 'message';
+                    const data = [];
+
+                    lines.forEach((line) => {
+                        if (line.startsWith('event:')) {
+                            eventName = line.slice(6).trim();
+                        }
+
+                        if (line.startsWith('data:')) {
+                            data.push(line.slice(5).trimStart());
+                        }
+                    });
+
+                    if (data.length === 0) {
+                        return;
+                    }
+
+                    let payload = {};
+
+                    try {
+                        payload = JSON.parse(data.join('\n'));
+                    } catch (error) {
+                        payload = {};
+                    }
+
+                    handlers[eventName]?.(payload);
+                };
+
+                const parseBuffer = (force = false) => {
+                    buffer = buffer.replace(/\r\n/g, '\n');
+                    let separator = buffer.indexOf('\n\n');
+
+                    while (separator !== -1) {
+                        const rawEvent = buffer.slice(0, separator);
+                        buffer = buffer.slice(separator + 2);
+                        parseEvent(rawEvent);
+                        separator = buffer.indexOf('\n\n');
+                    }
+
+                    if (force && buffer.trim()) {
+                        parseEvent(buffer);
+                        buffer = '';
+                    }
+                };
+
+                while (true) {
+                    const { done, value } = await reader.read();
+
+                    if (done) {
+                        break;
+                    }
+
+                    buffer += decoder.decode(value, { stream: true });
+                    parseBuffer();
+                }
+
+                buffer += decoder.decode();
+                parseBuffer(true);
+            };
+
+            const sendStreamingMessage = async (text, userMessage, pendingMessage) => {
+                const response = await fetch(config.streamEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json, text/event-stream',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': config.csrfToken,
+                    },
+                    body: JSON.stringify(requestPayload(text, userMessage)),
+                });
+
+                if (!response.ok) {
+                    const payload = await jsonPayload(response);
+
+                    if (response.status === 422) {
+                        state.failure = Object.values(payload.errors || {})?.[0]?.[0] || 'Please ask a shorter question.';
+                        return;
+                    }
+
+                    throw new Error(payload.message || 'ModelMind is unavailable right now.');
+                }
+
+                let completed = false;
+                let streamError = null;
+
+                await readStream(response, {
+                    ready: (payload) => {
+                        state.sessionId = payload.session_id || state.sessionId;
+                        state.sessionExpiresAt = payload.expires_at || nextSessionExpiresAt();
+                        userMessage.id = payload.user_message_id || userMessage.id || null;
+                    },
+                    delta: (payload) => {
+                        pendingMessage.content = `${pendingMessage.content || ''}${payload.delta || ''}`;
+                        render();
+                        scrollToLatest();
+                    },
+                    done: (payload) => {
+                        completed = true;
+                        applyFinalPayload(payload, userMessage, pendingMessage);
+                    },
+                    error: (payload) => {
+                        streamError = payload.message || 'ModelMind is unavailable right now.';
+                    },
+                });
+
+                if (streamError) {
+                    throw new Error(streamError);
+                }
+
+                if (!completed) {
+                    throw new Error('ModelMind did not finish the streamed response.');
+                }
+            };
+
             const ask = async (question = null) => {
                 if (isExpired(state.sessionExpiresAt)) {
                     resetLocalSession();
@@ -547,43 +722,11 @@
                 scrollToLatest();
 
                 try {
-                    const response = await fetch(config.endpoint, {
-                        method: 'POST',
-                        headers: {
-                            'Accept': 'application/json',
-                            'Content-Type': 'application/json',
-                            'X-CSRF-TOKEN': config.csrfToken,
-                        },
-                        body: JSON.stringify({
-                            session_id: state.sessionId,
-                            question: text,
-                            history: recentHistory(userMessage.localId),
-                        }),
-                    });
-                    const payload = await response.json().catch(() => ({}));
-
-                    if (response.status === 422) {
-                        state.failure = Object.values(payload.errors || {})?.[0]?.[0] || 'Please ask a shorter question.';
-                        return;
+                    if (state.streamingEnabled) {
+                        await sendStreamingMessage(text, userMessage, pendingMessage);
+                    } else {
+                        await sendJsonMessage(text, userMessage, pendingMessage);
                     }
-
-                    if (!response.ok) {
-                        throw new Error(payload.message || 'ModelMind is unavailable right now.');
-                    }
-
-                    state.sessionId = payload.session_id || state.sessionId;
-                    state.sessionExpiresAt = payload.expires_at || nextSessionExpiresAt();
-                    userMessage.id = payload.user_message_id || userMessage.id || null;
-                    state.messages = state.messages.filter((message) => message.localId !== pendingMessage.localId);
-                    state.messages.push({
-                        localId: `local-${state.nextLocalId++}`,
-                        id: payload.message_id || null,
-                        role: 'assistant',
-                        content: payload.answer || fallbackAnswer,
-                        actions: Array.isArray(payload.actions) ? payload.actions : [],
-                        citations: Array.isArray(payload.citations) ? payload.citations : [],
-                        feedback: null,
-                    });
                 } catch (error) {
                     state.failure = error.message || 'ModelMind is unavailable right now.';
                 } finally {

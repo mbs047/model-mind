@@ -20,6 +20,7 @@ Try ModelMind in [Market Lane Store](https://mbs-sample.on-forge.com/), a sample
 
 - Drop-in Blade chat modal with Tailwind-friendly styles.
 - Headless JSON API mode for React, Vue, Inertia, and mobile clients.
+- Optional streaming responses for faster-feeling chat UIs.
 - `@modelMind`, `@modelMindModal`, `@modelMindStyles`, and `@modelMindScripts` directives.
 - Built-in presets for store, admin, support, docs, and CRM applications.
 - Configurable widget position, width, offset, z-index, labels, prompt tone, and brand mark.
@@ -113,6 +114,7 @@ MODEL_MIND_API_ENABLED=true
 MODEL_MIND_API_PREFIX=api/model-mind
 MODEL_MIND_DEFAULT_QUESTIONS="What can you help with?|What data can you see?|How do I configure you?"
 MODEL_MIND_SESSION_LIFETIME_MINUTES=120
+MODEL_MIND_STREAMING=false
 MODEL_MIND_CONTEXT_CACHE_SECONDS=600
 MODEL_MIND_RETRIEVAL_ENABLED=true
 MODEL_MIND_RETRIEVAL_FUZZY=true
@@ -128,7 +130,7 @@ Supported widget positions are `bottom-right`, `bottom-left`, `bottom-center`, `
 
 ## Full Documentation
 
-Read the documentation index in [docs/README.md](docs/README.md). Start with [docs/examples.md](docs/examples.md) for simple and advanced copyable setups. Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, headless API mode, model configuration, multilingual answers, retrieval, route actions, source citations, authorization, security, learning memory, feedback, table prefixes, providers, routes, performance, and testing.
+Read the documentation index in [docs/README.md](docs/README.md). Start with [docs/examples.md](docs/examples.md) for simple and advanced copyable setups. Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, headless API mode, streaming responses, model configuration, multilingual answers, retrieval, route actions, source citations, authorization, security, learning memory, feedback, table prefixes, providers, routes, performance, and testing.
 
 For starter configuration by application type, run:
 

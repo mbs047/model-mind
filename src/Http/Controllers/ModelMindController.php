@@ -7,7 +7,9 @@ use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Str;
 use Mbs\ModelMind\Contracts\ModelMindProvider;
+use Mbs\ModelMind\Contracts\StreamingModelMindProvider;
 use Mbs\ModelMind\Data\ModelMindRequestData;
+use Mbs\ModelMind\Data\ModelMindResponseData;
 use Mbs\ModelMind\Http\Requests\AskModelMindRequest;
 use Mbs\ModelMind\Http\Requests\FeedbackModelMindMessageRequest;
 use Mbs\ModelMind\Models\ModelMindMessage;
@@ -17,6 +19,7 @@ use Mbs\ModelMind\Support\Citations\SourceCitationExtractor;
 use Mbs\ModelMind\Support\Learning\LearningRepository;
 use Mbs\ModelMind\Support\PromptBuilder;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ModelMindController extends Controller
 {
@@ -38,9 +41,11 @@ class ModelMindController extends Controller
                 'feedback' => (bool) config('model-mind.features.feedback', true),
                 'actions' => (bool) config('model-mind.features.actions', true),
                 'citations' => (bool) config('model-mind.features.citations', true),
+                'streaming' => (bool) config('model-mind.features.streaming', false),
             ],
             'endpoints' => [
                 'chat' => route((string) config('model-mind.api.name', 'model-mind.api.').'chat'),
+                'stream' => route((string) config('model-mind.api.name', 'model-mind.api.').'stream'),
                 'session' => route((string) config('model-mind.api.name', 'model-mind.api.').'session'),
                 'feedback' => $this->apiFeedbackEndpointTemplate(),
             ],
@@ -62,15 +67,7 @@ class ModelMindController extends Controller
         SourceCitationExtractor $citations,
         LearningRepository $learning,
     ): JsonResponse {
-        $session = $this->resolveSessionFromUuid($request->validated('session_id'), $request);
-        $this->importLegacyHistory($session, $request->validated('history', []));
-
-        $question = $request->string('question')->squish()->toString();
-        $userMessage = $session->messages()->create([
-            'role' => ModelMindMessage::ROLE_USER,
-            'content' => $question,
-        ]);
-        $session->compactForPrompt();
+        [$session, $question, $userMessage] = $this->beginAssistantTurn($request);
 
         try {
             $response = $provider->answer(new ModelMindRequestData(
@@ -88,6 +85,117 @@ class ModelMindController extends Controller
             ], 503);
         }
 
+        $payload = $this->completeAssistantTurn(
+            session: $session,
+            question: $question,
+            response: $response,
+            actions: $actions,
+            citations: $citations,
+            learning: $learning,
+        );
+
+        return response()->json([
+            'answer' => $payload['answer'],
+            'actions' => $payload['actions'],
+            'citations' => $payload['citations'],
+            'session_id' => $session->uuid,
+            'expires_at' => $this->sessionExpiresAt($session),
+            'user_message_id' => $userMessage->uuid,
+            'message_id' => $payload['message_id'],
+        ]);
+    }
+
+    public function stream(
+        AskModelMindRequest $request,
+        ModelMindProvider $provider,
+        PromptBuilder $promptBuilder,
+        ActionExtractor $actions,
+        SourceCitationExtractor $citations,
+        LearningRepository $learning,
+    ): StreamedResponse {
+        [$session, $question, $userMessage] = $this->beginAssistantTurn($request);
+        $modelMindRequest = new ModelMindRequestData(
+            question: $question,
+            instructions: $promptBuilder->instructions($question),
+            session: $session,
+        );
+
+        return response()->stream(function () use ($provider, $modelMindRequest, $session, $userMessage, $question, $actions, $citations, $learning): void {
+            $this->sendStreamEvent('ready', [
+                'session_id' => $session->uuid,
+                'expires_at' => $this->sessionExpiresAt($session),
+                'user_message_id' => $userMessage->uuid,
+            ]);
+
+            try {
+                $response = $this->streamProviderResponse($provider, $modelMindRequest);
+            } catch (RuntimeException $exception) {
+                report($exception);
+                $session->compactForPrompt();
+
+                $this->sendStreamEvent('error', [
+                    'message' => 'ModelMind is unavailable right now. Please try again soon.',
+                    'session_id' => $session->uuid,
+                ]);
+
+                return;
+            }
+
+            $payload = $this->completeAssistantTurn(
+                session: $session,
+                question: $question,
+                response: $response,
+                actions: $actions,
+                citations: $citations,
+                learning: $learning,
+            );
+
+            $this->sendStreamEvent('done', [
+                'answer' => $payload['answer'],
+                'actions' => $payload['actions'],
+                'citations' => $payload['citations'],
+                'session_id' => $session->uuid,
+                'expires_at' => $this->sessionExpiresAt($session),
+                'user_message_id' => $userMessage->uuid,
+                'message_id' => $payload['message_id'],
+            ]);
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache, no-transform',
+            'Connection' => 'keep-alive',
+            'X-Accel-Buffering' => 'no',
+        ]);
+    }
+
+    /**
+     * @return array{0: ModelMindSession, 1: string, 2: ModelMindMessage}
+     */
+    private function beginAssistantTurn(AskModelMindRequest $request): array
+    {
+        $session = $this->resolveSessionFromUuid($request->validated('session_id'), $request);
+        $this->importLegacyHistory($session, $request->validated('history', []));
+
+        $question = $request->string('question')->squish()->toString();
+        $userMessage = $session->messages()->create([
+            'role' => ModelMindMessage::ROLE_USER,
+            'content' => $question,
+        ]);
+        $session->compactForPrompt();
+
+        return [$session, $question, $userMessage];
+    }
+
+    /**
+     * @return array{answer: string, actions: array<int, array{label: string, url: string, kind: string}>, citations: array<int, array{model: string, record: string, source: string, columns: array<int, string>, action: array{label: string, url: string, kind: string}|null}>, message_id: string}
+     */
+    private function completeAssistantTurn(
+        ModelMindSession $session,
+        string $question,
+        ModelMindResponseData $response,
+        ActionExtractor $actions,
+        SourceCitationExtractor $citations,
+        LearningRepository $learning,
+    ): array {
         $cited = $citations->prepare($response->answer, $question);
         $prepared = $actions->prepare($cited['answer']);
         $assistantMessage = $session->messages()->create([
@@ -106,15 +214,100 @@ class ModelMindController extends Controller
         ]);
         $session->compactForPrompt();
 
-        return response()->json([
+        return [
             'answer' => $prepared['answer'],
             'actions' => $prepared['actions'],
             'citations' => $cited['citations'],
-            'session_id' => $session->uuid,
-            'expires_at' => $this->sessionExpiresAt($session),
-            'user_message_id' => $userMessage->uuid,
             'message_id' => $assistantMessage->uuid,
-        ]);
+        ];
+    }
+
+    private function streamProviderResponse(ModelMindProvider $provider, ModelMindRequestData $request): ModelMindResponseData
+    {
+        if (! $provider instanceof StreamingModelMindProvider) {
+            $response = $provider->answer($request);
+            $visibleAnswer = $this->visibleStreamAnswer($response->answer);
+
+            if ($visibleAnswer !== '') {
+                $this->sendStreamEvent('delta', [
+                    'delta' => $visibleAnswer,
+                ]);
+            }
+
+            return $response;
+        }
+
+        $answer = '';
+        $visibleAnswer = '';
+
+        foreach ($provider->stream($request) as $delta) {
+            if ($delta === '') {
+                continue;
+            }
+
+            $answer .= $delta;
+            $nextVisibleAnswer = $this->visibleStreamAnswer($answer);
+            $visibleDelta = substr($nextVisibleAnswer, strlen($visibleAnswer));
+            $visibleAnswer = $nextVisibleAnswer;
+
+            if ($visibleDelta !== '') {
+                $this->sendStreamEvent('delta', [
+                    'delta' => $visibleDelta,
+                ]);
+            }
+        }
+
+        if (blank($answer)) {
+            throw new RuntimeException('The ModelMind provider response did not include text.');
+        }
+
+        return new ModelMindResponseData(trim($answer), $provider->streamMetadata($request));
+    }
+
+    private function visibleStreamAnswer(string $answer): string
+    {
+        $tokens = collect([
+            config('model-mind.actions.route_token', 'model_mind_route'),
+            config('model-mind.citations.token', 'model_mind_source'),
+        ])
+            ->filter(fn (mixed $token): bool => is_string($token) && filled($token))
+            ->values();
+
+        if ($tokens->isEmpty()) {
+            return $answer;
+        }
+
+        $pattern = '/\[\[(?:'.$tokens
+            ->map(fn (string $token): string => preg_quote($token, '/'))
+            ->implode('|').')\b[^\]]*\]\]/u';
+        $visible = preg_replace($pattern, '', $answer) ?? $answer;
+        $partialStart = strrpos($visible, '[[');
+
+        if ($partialStart === false) {
+            return $visible;
+        }
+
+        $partialToken = substr($visible, $partialStart + 2);
+
+        $isPartialInternalToken = $tokens->contains(fn (string $token): bool => str_starts_with($token, $partialToken)
+            || str_starts_with($partialToken, $token));
+
+        return $isPartialInternalToken ? substr($visible, 0, $partialStart) : $visible;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function sendStreamEvent(string $event, array $payload): void
+    {
+        echo "event: {$event}\n";
+        echo 'data: '.json_encode($payload, JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_UNESCAPED_SLASHES)."\n\n";
+
+        if (ob_get_level() > 0) {
+            @ob_flush();
+        }
+
+        flush();
     }
 
     public function session(Request $request): JsonResponse

@@ -12,6 +12,9 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 - Optional Laravel Scout candidate retrieval before database ranking.
 - Optional vector search extension through `ModelMindVectorSearcher` for embeddings or external vector indexes.
 - Retrieval documentation for column weights, fuzzy settings, multilingual normalization, Scout, and vector searchers.
+- Optional streaming responses through web and headless API stream endpoints.
+- `StreamingModelMindProvider` contract for providers that can emit live answer deltas.
+- Streaming documentation for Blade, headless clients, custom providers, and production buffering.
 
 ## v1.0.13 - 2026-05-21
 

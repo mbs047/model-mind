@@ -327,7 +327,7 @@ MODEL_MIND_LEARNING_CONTEXT_LIMIT=12
     'actions' => true,
     'citations' => true,
     'voice' => false,
-    'streaming' => false,
+    'streaming' => filter_var(env('MODEL_MIND_STREAMING', true), FILTER_VALIDATE_BOOL),
     'realtime' => false,
 ],
 
@@ -542,6 +542,7 @@ Headless clients can bootstrap their UI from:
 ```bash
 GET /api/model-mind/manifest
 POST /api/model-mind/chat
+POST /api/model-mind/stream
 ```
 
 ## Related Guides
@@ -553,6 +554,7 @@ POST /api/model-mind/chat
 - [Models and Context](models.md)
 - [Named Route Actions](route-actions.md)
 - [Headless API](headless-api.md)
+- [Streaming Responses](streaming.md)
 - [Learning Memory](learning-memory.md)
 - [Sessions](sessions.md)
 - [Multilingual Answers](multilingual.md)

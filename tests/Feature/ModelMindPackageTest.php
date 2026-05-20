@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
+use Mbs\ModelMind\Contracts\ModelMindProvider;
 use Mbs\ModelMind\Models\ModelMindMemory;
 use Mbs\ModelMind\Models\ModelMindMessage;
 use Mbs\ModelMind\Models\ModelMindSession;
@@ -19,6 +20,7 @@ use Mbs\ModelMind\Support\Database\TableNames;
 use Mbs\ModelMind\Support\Presets\ModelMindPresetRepository;
 use Mbs\ModelMind\Tests\Fixtures\FakeVectorSearcher;
 use Mbs\ModelMind\Tests\Fixtures\KnowledgeEntry;
+use Mbs\ModelMind\Tests\Fixtures\StreamingProvider;
 use Mbs\ModelMind\Tests\Fixtures\User;
 use Mbs\ModelMind\Tests\TestCase;
 
@@ -92,7 +94,9 @@ class ModelMindPackageTest extends TestCase
         $this->assertStringContainsString('--model-mind-width: 25rem;', $html);
         $this->assertStringContainsString('window.ModelMind', $html);
         $this->assertStringContainsString(route('model-mind.chat'), $html);
+        $this->assertStringContainsString(route('model-mind.stream'), $html);
         $this->assertStringContainsString(route('model-mind.session'), $html);
+        $this->assertStringContainsString('"streamingEnabled":false', $html);
         $this->assertStringContainsString('Ask ModelMind', $html);
         $this->assertStringContainsString('Helpful', $html);
         $this->assertStringContainsString('Not helpful', $html);
@@ -216,7 +220,9 @@ class ModelMindPackageTest extends TestCase
             ->assertJsonPath('features.feedback', true)
             ->assertJsonPath('features.actions', true)
             ->assertJsonPath('features.citations', true)
+            ->assertJsonPath('features.streaming', false)
             ->assertJsonPath('endpoints.chat', route('model-mind.api.chat'))
+            ->assertJsonPath('endpoints.stream', route('model-mind.api.stream'))
             ->assertJsonPath('endpoints.session', route('model-mind.api.session'))
             ->assertJsonPath('limits.question_characters', 2000)
             ->assertJsonPath('session_lifetime_minutes', 120);
@@ -266,6 +272,45 @@ class ModelMindPackageTest extends TestCase
             ->assertJsonPath('messages.0.role', ModelMindMessage::ROLE_USER)
             ->assertJsonPath('messages.1.role', ModelMindMessage::ROLE_ASSISTANT)
             ->assertJsonPath('messages.1.actions.0.url', url("/knowledge/{$entry->id}"));
+    }
+
+    public function test_stream_endpoint_emits_server_sent_events_and_persists_message(): void
+    {
+        config()->set('model-mind.features.streaming', true);
+
+        $entry = KnowledgeEntry::query()->create([
+            'title' => 'Streaming policy',
+            'body' => 'Streamed answers should show up before the full response is complete.',
+            'is_public' => true,
+        ]);
+        StreamingProvider::$chunks = [
+            "Streaming answer with a route.\n",
+            "[[model_mind_route key=\"knowledge.view\" entry=\"{$entry->id}\"]]",
+        ];
+
+        $this->app->bind(ModelMindProvider::class, StreamingProvider::class);
+
+        $response = $this->post(route('model-mind.stream'), [
+            'question' => 'Can you stream this answer?',
+        ], [
+            'Accept' => 'text/event-stream',
+        ]);
+
+        $response->assertOk();
+
+        $content = $response->streamedContent();
+
+        $this->assertStringContainsString('event: ready', $content);
+        $this->assertStringContainsString('event: delta', $content);
+        $this->assertStringContainsString('Streaming answer with a route.', $content);
+        $this->assertStringContainsString('event: done', $content);
+        $this->assertStringContainsString('"answer":"Streaming answer with a route."', $content);
+        $this->assertStringContainsString(url("/knowledge/{$entry->id}"), $content);
+        $this->assertStringNotContainsString('model_mind_route', $content);
+        $this->assertDatabaseHas('model_mind_messages', [
+            'role' => ModelMindMessage::ROLE_ASSISTANT,
+            'content' => 'Streaming answer with a route.',
+        ]);
     }
 
     public function test_presets_expose_complete_configuration_recommendations(): void

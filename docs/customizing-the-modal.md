@@ -127,6 +127,7 @@ Minimum structure:
     $assistant = config('model-mind.assistant');
     $modelMindConfig = [
         'endpoint' => route(config('model-mind.routes.name', 'model-mind.').'chat'),
+        'streamEndpoint' => route(config('model-mind.routes.name', 'model-mind.').'stream'),
         'sessionEndpoint' => route(config('model-mind.routes.name', 'model-mind.').'session'),
         'feedbackEndpoint' => url(config('model-mind.routes.prefix', 'model-mind').'/messages'),
         'csrfToken' => csrf_token(),
@@ -138,6 +139,7 @@ Minimum structure:
         'historyMessages' => (int) config('model-mind.memory.recent_messages', 12),
         'sessionLifetimeMinutes' => (int) config('model-mind.memory.session_lifetime_minutes', 120),
         'feedbackEnabled' => (bool) config('model-mind.features.feedback', true),
+        'streamingEnabled' => (bool) config('model-mind.features.streaming', false),
         'theme' => config('model-mind.ui.theme', 'auto'),
     ];
 @endphp
@@ -243,11 +245,12 @@ MODEL_MIND_SCRIPTS_ASSET=vendor/model-mind/custom.js
 
 ## Replacing the Script
 
-Only replace the script when you need a different client-side behavior, such as streaming, custom animations, or a design-system state manager.
+Only replace the script when you need a different client-side behavior, such as custom animations or a design-system state manager.
 
 Use `MODEL_MIND_SCRIPTS_ASSET` for a public file. Your script should still post to the configured endpoints:
 
 - `POST` to `endpoint` for questions.
+- `POST` to `streamEndpoint` for streamed questions when `streamingEnabled` is true.
 - `GET` to `sessionEndpoint` for history restore.
 - `POST` to `${feedbackEndpoint}/${messageId}/feedback` for feedback.
 

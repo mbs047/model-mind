@@ -13,12 +13,14 @@ MODEL_MIND_SUMMARY_CHARACTERS=2000
 MODEL_MIND_MAX_OUTPUT_TOKENS=450
 MODEL_MIND_TIMEOUT=12
 MODEL_MIND_CONNECT_TIMEOUT=3
+MODEL_MIND_STREAMING=true
 ```
 
 ## Large Applications
 
 - Keep per-model `limit` small.
 - Keep question-aware retrieval enabled for large searchable models.
+- Enable streaming so visitors see partial answer text while the provider is still generating.
 - Prefer scoped public records with `modelMindContextQuery()`.
 - Use custom context providers for summarized analytics instead of sending many raw rows.
 - Run `php artisan model-mind:inspect-context` and check the resulting character size.
