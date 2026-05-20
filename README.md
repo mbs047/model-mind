@@ -28,6 +28,17 @@ php artisan migrate
 
 By default, the modal ships with the `MBS` brand mark. Override it per app with `MODEL_MIND_BRAND_MARK`.
 
+The widget position is configurable:
+
+```env
+MODEL_MIND_POSITION=bottom-right
+MODEL_MIND_WIDTH=25rem
+MODEL_MIND_OFFSET=1.25rem
+MODEL_MIND_Z_INDEX=9999
+```
+
+Supported positions: `bottom-right`, `bottom-left`, `bottom-center`, `top-right`, `top-left`, `top-center`, `center`, `center-left`, `center-right`. Short aliases are also accepted: `top`, `bottom`, `left`, and `right`.
+
 If installing directly from GitHub before Packagist registration, add a Composer repository:
 
 ```json

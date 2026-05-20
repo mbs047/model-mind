@@ -13,10 +13,53 @@
         'historyMessages' => (int) config('model-mind.memory.recent_messages', 12),
         'feedbackEnabled' => (bool) config('model-mind.features.feedback', true),
     ];
+    $ui = config('model-mind.ui', []);
+    $normalizeCssLength = function (mixed $value, string $fallback): string {
+        if (! is_numeric($value) && ! is_string($value)) {
+            return $fallback;
+        }
+
+        $value = trim((string) $value);
+
+        return preg_match('/^\d*\.?\d+(px|rem|em|vh|vw|%)$/', $value) === 1 ? $value : $fallback;
+    };
+    $position = strtolower((string) ($ui['position'] ?? 'bottom-right'));
+    $position = preg_replace('/[\s_]+/', '-', $position) ?: 'bottom-right';
+    $positionAliases = [
+        'bottom' => 'bottom-center',
+        'center-bottom' => 'bottom-center',
+        'center-left' => 'center-left',
+        'center-right' => 'center-right',
+        'left' => 'center-left',
+        'middle' => 'center',
+        'middle-left' => 'center-left',
+        'middle-right' => 'center-right',
+        'right' => 'center-right',
+        'top' => 'top-center',
+        'center-top' => 'top-center',
+    ];
+    $position = $positionAliases[$position] ?? $position;
+    $supportedPositions = [
+        'bottom-center',
+        'bottom-left',
+        'bottom-right',
+        'center',
+        'center-left',
+        'center-right',
+        'top-center',
+        'top-left',
+        'top-right',
+    ];
+    $position = in_array($position, $supportedPositions, true) ? $position : 'bottom-right';
+    $width = $normalizeCssLength($ui['width'] ?? null, '25rem');
+    $offset = $normalizeCssLength($ui['offset'] ?? null, '1.25rem');
+    $zIndex = max(1, min((int) ($ui['z_index'] ?? 9999), 2147483647));
 @endphp
 
 <div
-    class="fixed inset-x-3 bottom-5 z-[9999] print:hidden sm:inset-x-auto sm:right-5 sm:w-[25rem]"
+    class="model-mind-widget"
+    style="--model-mind-width: {{ $width }}; --model-mind-offset: {{ $offset }}; --model-mind-z-index: {{ $zIndex }};"
+    data-model-mind-position="{{ $position }}"
     data-model-mind-widget
 >
     <script type="application/json" data-model-mind-config>{!! json_encode($modelMindConfig, JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_UNESCAPED_SLASHES) !!}</script>

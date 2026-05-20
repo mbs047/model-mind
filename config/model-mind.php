@@ -112,7 +112,10 @@ return [
     'ui' => [
         'enabled' => true,
         'storage_key' => 'model-mind-state',
-        'position' => 'bottom-right',
+        'position' => env('MODEL_MIND_POSITION', 'bottom-right'),
+        'width' => env('MODEL_MIND_WIDTH', '25rem'),
+        'offset' => env('MODEL_MIND_OFFSET', '1.25rem'),
+        'z_index' => (int) env('MODEL_MIND_Z_INDEX', 9999),
     ],
 
     'features' => [
