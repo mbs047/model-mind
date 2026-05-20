@@ -14,7 +14,7 @@ It gives any Laravel app a reusable Blade/Tailwind chat modal, persisted convers
 
 ## Demo Store
 
-Try ModelMind in the [MBS sample store](https://mbs-sample.on-forge.com/), a showcase application for MBS packages with ModelMind installed for testing.
+Try ModelMind in [Market Lane Store](https://mbs-sample.on-forge.com/), a sample store and showcase application for MBS packages with ModelMind installed for testing.
 
 ## Features
 
