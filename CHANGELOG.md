@@ -6,6 +6,8 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+## v1.0.7 - 2026-05-20
+
 ### Added
 
 - Simple and advanced documentation examples that combine the package's main configuration features.
