@@ -64,7 +64,8 @@ Response:
         "actions": true,
         "citations": true,
         "streaming": false,
-        "analytics": true
+        "analytics": true,
+        "page_context": true
     },
     "endpoints": {
         "chat": "https://example.test/api/model-mind/chat",
@@ -77,7 +78,8 @@ Response:
         "question_characters": 2000,
         "history_messages": 20,
         "history_message_characters": 10000,
-        "feedback_note_characters": 1000
+        "feedback_note_characters": 1000,
+        "page_context_characters": 6000
     },
     "session_lifetime_minutes": 120
 }
@@ -98,7 +100,12 @@ Content-Type: application/json
     "history": [
         {"role": "user", "content": "Show inventory"},
         {"role": "assistant", "content": "I can answer from enabled inventory data."}
-    ]
+    ],
+    "page_context": {
+        "url": "https://example.test/products/1",
+        "title": "Samsung Galaxy S24 Ultra",
+        "content": "Large-screen Android flagship with AI tools."
+    }
 }
 ```
 
@@ -250,6 +257,7 @@ localStorage.setItem('modelmind_session_id', response.session_id);
 - For streaming, render `delta` as draft text and replace it with `done.answer`.
 - Render `actions` as trusted buttons or links.
 - Render `citations` as source cards if you want auditability.
+- Send `page_context` when users should be able to ask about the current page.
 - Send action-click analytics when users click rendered action or citation buttons.
 - Send feedback only for assistant `message_id` values.
 - Use your normal API authentication and CORS policy for external clients.

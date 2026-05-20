@@ -81,7 +81,7 @@ class OllamaModelMindProvider implements ModelMindProvider, StreamingModelMindPr
                 ],
                 [
                     'role' => 'user',
-                    'content' => $this->promptBuilder->input($request->question, $request->session),
+                    'content' => $this->promptBuilder->input($request->question, $request->session, $request->pageContext),
                 ],
             ],
             'stream' => $stream,

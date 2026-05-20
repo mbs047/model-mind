@@ -346,9 +346,17 @@ MODEL_MIND_LEARNING_CONTEXT_LIMIT=12
     'actions' => true,
     'citations' => true,
     'analytics' => true,
+    'page_context' => true,
     'voice' => false,
     'streaming' => filter_var(env('MODEL_MIND_STREAMING', true), FILTER_VALIDATE_BOOL),
     'realtime' => false,
+],
+
+'page_context' => [
+    'enabled' => true,
+    'max_content_characters' => 6000,
+    'selectors' => ['[data-model-mind-page-context]', 'main', 'article'],
+    'exclude_selectors' => ['[data-model-mind-widget]', 'nav', 'footer', 'form', 'script', 'style'],
 ],
 
 'analytics' => [
@@ -583,6 +591,7 @@ POST /api/model-mind/stream
 - [Streaming Responses](streaming.md)
 - [Provider Drivers](provider-drivers.md)
 - [Learning Memory](learning-memory.md)
+- [Current Page Context](page-context.md)
 - [Usage Analytics](analytics.md)
 - [Events and Hooks](events-and-hooks.md)
 - [Sessions](sessions.md)

@@ -132,7 +132,7 @@ class OpenAiModelMindProvider implements ModelMindProvider, StreamingModelMindPr
                 'role' => 'user',
                 'content' => [[
                     'type' => 'input_text',
-                    'text' => $this->promptBuilder->input($request->question, $request->session),
+                    'text' => $this->promptBuilder->input($request->question, $request->session, $request->pageContext),
                 ]],
             ]],
             'max_output_tokens' => (int) $this->providerSetting(self::DRIVER, 'max_output_tokens', 700),

@@ -90,7 +90,7 @@ class AnthropicModelMindProvider implements ModelMindProvider, StreamingModelMin
             'system' => $request->instructions,
             'messages' => [[
                 'role' => 'user',
-                'content' => $this->promptBuilder->input($request->question, $request->session),
+                'content' => $this->promptBuilder->input($request->question, $request->session, $request->pageContext),
             ]],
             'max_tokens' => (int) $this->providerSetting(self::DRIVER, 'max_output_tokens', 700),
             'stream' => $stream,

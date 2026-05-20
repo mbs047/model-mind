@@ -106,6 +106,7 @@ class ModelMindPackageTest extends TestCase
         $this->assertStringContainsString(route('model-mind.session'), $html);
         $this->assertStringContainsString(route('model-mind.actions.click'), $html);
         $this->assertStringContainsString('"streamingEnabled":false', $html);
+        $this->assertStringContainsString('"pageContext":{"enabled":true', $html);
         $this->assertStringContainsString('Ask ModelMind', $html);
         $this->assertStringContainsString('Helpful', $html);
         $this->assertStringContainsString('Not helpful', $html);
@@ -233,11 +234,13 @@ class ModelMindPackageTest extends TestCase
             ->assertJsonPath('features.citations', true)
             ->assertJsonPath('features.streaming', false)
             ->assertJsonPath('features.analytics', true)
+            ->assertJsonPath('features.page_context', true)
             ->assertJsonPath('endpoints.chat', route('model-mind.api.chat'))
             ->assertJsonPath('endpoints.stream', route('model-mind.api.stream'))
             ->assertJsonPath('endpoints.session', route('model-mind.api.session'))
             ->assertJsonPath('endpoints.action_click', route('model-mind.api.actions.click'))
             ->assertJsonPath('limits.question_characters', 2000)
+            ->assertJsonPath('limits.page_context_characters', 6000)
             ->assertJsonPath('session_lifetime_minutes', 120);
 
         $this->assertStringContainsString(
@@ -741,6 +744,70 @@ class ModelMindPackageTest extends TestCase
             'output_tokens' => 18,
             'total_tokens' => 60,
         ]);
+    }
+
+    public function test_chat_endpoint_includes_sanitized_current_page_context(): void
+    {
+        Http::fake([
+            'api.openai.com/v1/responses' => function (Request $request) {
+                $input = (string) ($request['input'][0]['content'][0]['text'] ?? '');
+
+                $this->assertStringContainsString('CURRENT PAGE CONTEXT', $input);
+                $this->assertStringContainsString('URL: https://store.test/products/s24', $input);
+                $this->assertStringContainsString('Title: Samsung Galaxy S24 Ultra', $input);
+                $this->assertStringContainsString('Description: Flagship product page.', $input);
+                $this->assertStringContainsString('Headings: Product details | Specifications', $input);
+                $this->assertStringContainsString('Selected text:', $input);
+                $this->assertStringContainsString('Visible page text:', $input);
+                $this->assertStringContainsString('Large-screen Android flagship with AI tools.', $input);
+                $this->assertStringNotContainsString('<strong>', $input);
+
+                return Http::response([
+                    'output_text' => 'This page is about the Samsung Galaxy S24 Ultra.',
+                ]);
+            },
+        ]);
+
+        $this->postJson(route('model-mind.chat'), [
+            'question' => 'What do you think about this product?',
+            'page_context' => [
+                'url' => 'https://store.test/products/s24',
+                'title' => '<strong>Samsung Galaxy S24 Ultra</strong>',
+                'description' => 'Flagship product page.',
+                'headings' => ['Product details', 'Specifications'],
+                'selection' => '256GB storage and 6.8-inch display.',
+                'content' => '<strong>Large-screen Android flagship with AI tools.</strong>',
+                'locale' => 'en',
+            ],
+        ])
+            ->assertOk()
+            ->assertJsonPath('answer', 'This page is about the Samsung Galaxy S24 Ultra.');
+    }
+
+    public function test_current_page_context_can_be_disabled_from_config(): void
+    {
+        config()->set('model-mind.page_context.enabled', false);
+
+        Http::fake([
+            'api.openai.com/v1/responses' => function (Request $request) {
+                $input = (string) ($request['input'][0]['content'][0]['text'] ?? '');
+
+                $this->assertStringNotContainsString('CURRENT PAGE CONTEXT', $input);
+                $this->assertStringNotContainsString('Private draft page title', $input);
+
+                return Http::response([
+                    'output_text' => 'The page context feature is disabled.',
+                ]);
+            },
+        ]);
+
+        $this->postJson(route('model-mind.chat'), [
+            'question' => 'Summarize this page',
+            'page_context' => [
+                'title' => 'Private draft page title',
+                'content' => 'This should not reach the provider.',
+            ],
+        ])->assertOk();
     }
 
     public function test_chat_failures_are_tracked_without_breaking_error_response(): void

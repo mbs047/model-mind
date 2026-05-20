@@ -27,6 +27,7 @@ Event::listen(MessageSent::class, function (MessageSent $event): void {
     $message = $event->message;
     $question = $event->question;
     $transport = $event->context['transport'] ?? null;
+    $pageContext = $event->context['page_context'] ?? [];
 });
 ```
 

@@ -94,7 +94,7 @@ class GeminiModelMindProvider implements ModelMindProvider, StreamingModelMindPr
             'contents' => [[
                 'role' => 'user',
                 'parts' => [[
-                    'text' => $this->promptBuilder->input($request->question, $request->session),
+                    'text' => $this->promptBuilder->input($request->question, $request->session, $request->pageContext),
                 ]],
             ]],
             'generationConfig' => [

@@ -27,6 +27,13 @@
         'sessionLifetimeMinutes' => max(0, (int) config('model-mind.memory.session_lifetime_minutes', 120)),
         'feedbackEnabled' => (bool) config('model-mind.features.feedback', true),
         'streamingEnabled' => (bool) config('model-mind.features.streaming', false),
+        'pageContext' => [
+            'enabled' => (bool) config('model-mind.features.page_context', true) && (bool) config('model-mind.page_context.enabled', true),
+            'maxContentCharacters' => (int) config('model-mind.page_context.max_content_characters', 6000),
+            'maxSelectionCharacters' => (int) config('model-mind.page_context.max_selection_characters', 2000),
+            'selectors' => collect(config('model-mind.page_context.selectors', []))->filter(fn (mixed $selector): bool => is_string($selector) && filled($selector))->values()->all(),
+            'excludeSelectors' => collect(config('model-mind.page_context.exclude_selectors', []))->filter(fn (mixed $selector): bool => is_string($selector) && filled($selector))->values()->all(),
+        ],
     ];
     $ui = config('model-mind.ui', []);
     $normalizeCssLength = function (mixed $value, string $fallback): string {

@@ -22,6 +22,7 @@ use Mbs\ModelMind\Support\Actions\ActionExtractor;
 use Mbs\ModelMind\Support\Analytics\ModelMindAnalytics;
 use Mbs\ModelMind\Support\Citations\SourceCitationExtractor;
 use Mbs\ModelMind\Support\Learning\LearningRepository;
+use Mbs\ModelMind\Support\PageContext\PageContextSanitizer;
 use Mbs\ModelMind\Support\PromptBuilder;
 use RuntimeException;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -48,6 +49,8 @@ class ModelMindController extends Controller
                 'citations' => (bool) config('model-mind.features.citations', true),
                 'streaming' => (bool) config('model-mind.features.streaming', false),
                 'analytics' => (bool) config('model-mind.analytics.enabled', true),
+                'page_context' => (bool) config('model-mind.features.page_context', true)
+                    && (bool) config('model-mind.page_context.enabled', true),
             ],
             'endpoints' => [
                 'chat' => route((string) config('model-mind.api.name', 'model-mind.api.').'chat'),
@@ -61,6 +64,7 @@ class ModelMindController extends Controller
                 'history_messages' => 20,
                 'history_message_characters' => 10000,
                 'feedback_note_characters' => 1000,
+                'page_context_characters' => (int) config('model-mind.page_context.max_content_characters', 6000),
             ],
             'session_lifetime_minutes' => max(0, (int) config('model-mind.memory.session_lifetime_minutes', 120)),
         ]);
@@ -74,8 +78,9 @@ class ModelMindController extends Controller
         SourceCitationExtractor $citations,
         LearningRepository $learning,
         ModelMindAnalytics $analytics,
+        PageContextSanitizer $pageContextSanitizer,
     ): JsonResponse {
-        [$session, $question, $userMessage] = $this->beginAssistantTurn($request);
+        [$session, $question, $userMessage, $pageContext] = $this->beginAssistantTurn($request, $pageContextSanitizer);
         $startedAt = hrtime(true);
 
         try {
@@ -83,6 +88,7 @@ class ModelMindController extends Controller
                 question: $question,
                 instructions: $promptBuilder->instructions($question),
                 session: $session,
+                pageContext: $pageContext,
             ));
         } catch (RuntimeException $exception) {
             report($exception);
@@ -125,12 +131,14 @@ class ModelMindController extends Controller
         SourceCitationExtractor $citations,
         LearningRepository $learning,
         ModelMindAnalytics $analytics,
+        PageContextSanitizer $pageContextSanitizer,
     ): StreamedResponse {
-        [$session, $question, $userMessage] = $this->beginAssistantTurn($request);
+        [$session, $question, $userMessage, $pageContext] = $this->beginAssistantTurn($request, $pageContextSanitizer);
         $modelMindRequest = new ModelMindRequestData(
             question: $question,
             instructions: $promptBuilder->instructions($question),
             session: $session,
+            pageContext: $pageContext,
         );
 
         return response()->stream(function () use ($provider, $modelMindRequest, $session, $userMessage, $question, $actions, $citations, $learning, $analytics): void {
@@ -185,12 +193,13 @@ class ModelMindController extends Controller
     }
 
     /**
-     * @return array{0: ModelMindSession, 1: string, 2: ModelMindMessage}
+     * @return array{0: ModelMindSession, 1: string, 2: ModelMindMessage, 3: array<string, mixed>}
      */
-    private function beginAssistantTurn(AskModelMindRequest $request): array
+    private function beginAssistantTurn(AskModelMindRequest $request, PageContextSanitizer $pageContextSanitizer): array
     {
         $session = $this->resolveSessionFromUuid($request->validated('session_id'), $request);
         $this->importLegacyHistory($session, $request->validated('history', []));
+        $pageContext = $pageContextSanitizer->sanitize((array) $request->validated('page_context', []));
 
         $question = $request->string('question')->squish()->toString();
         $userMessage = $session->messages()->create([
@@ -200,10 +209,11 @@ class ModelMindController extends Controller
         event(new MessageSent($session, $userMessage, $question, [
             'route' => $request->route()?->getName(),
             'transport' => $request->expectsJson() ? 'json' : 'web',
+            'page_context' => $pageContext,
         ]));
         $session->compactForPrompt();
 
-        return [$session, $question, $userMessage];
+        return [$session, $question, $userMessage, $pageContext];
     }
 
     /**

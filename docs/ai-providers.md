@@ -18,7 +18,7 @@ public function register(): void
 }
 ```
 
-Your provider receives a `ModelMindRequestData` object and returns `ModelMindResponseData`.
+Your provider receives a `ModelMindRequestData` object and returns `ModelMindResponseData`. The request includes `question`, `instructions`, `session`, and optional sanitized `pageContext`.
 
 Use a custom provider when you need a different AI service, internal gateway, streaming adapter, or company-specific logging layer.
 

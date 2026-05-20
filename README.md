@@ -30,6 +30,7 @@ Try ModelMind in [Market Lane Store](https://mbs-sample.on-forge.com/), a sample
 - Auto-discovered columns with sensitive field filtering.
 - Per-model control through the `HasModelMindContext` trait.
 - Persisted chat sessions, message history, user feedback, and learned knowledge.
+- Current-page awareness so visitors can ask about the product, record, or content they are viewing.
 - Usage analytics and Laravel events for latency, token usage, provider/model usage, failures, feedback rate, action clicks, generated answers, and learned memory.
 - Configurable table prefix for clean package ownership.
 - Safe named-route action buttons from configured Laravel routes.
@@ -125,6 +126,7 @@ MODEL_MIND_RETRIEVAL_MULTILINGUAL=true
 MODEL_MIND_INFER_ROUTE_ACTIONS=true
 MODEL_MIND_CITATIONS_ENABLED=true
 MODEL_MIND_INFER_SOURCE_CITATIONS=true
+MODEL_MIND_PAGE_CONTEXT_ENABLED=true
 MODEL_MIND_ANALYTICS_ENABLED=true
 MODEL_MIND_MAX_OUTPUT_TOKENS=450
 MODEL_MIND_USE_PUBLIC_ASSETS=false
@@ -134,7 +136,7 @@ Supported widget positions are `bottom-right`, `bottom-left`, `bottom-center`, `
 
 ## Full Documentation
 
-Read the documentation index in [docs/README.md](docs/README.md). Start with [docs/examples.md](docs/examples.md) for simple and advanced copyable setups. Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, headless API mode, streaming responses, provider drivers, model configuration, multilingual answers, retrieval, route actions, source citations, authorization, security, learning memory, feedback, analytics, events and hooks, table prefixes, routes, performance, and testing.
+Read the documentation index in [docs/README.md](docs/README.md). Start with [docs/examples.md](docs/examples.md) for simple and advanced copyable setups. Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, headless API mode, streaming responses, provider drivers, model configuration, multilingual answers, retrieval, route actions, source citations, authorization, security, learning memory, feedback, current page context, analytics, events and hooks, table prefixes, routes, performance, and testing.
 
 For starter configuration by application type, run:
 

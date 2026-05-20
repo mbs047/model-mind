@@ -141,6 +141,13 @@ Minimum structure:
         'sessionLifetimeMinutes' => (int) config('model-mind.memory.session_lifetime_minutes', 120),
         'feedbackEnabled' => (bool) config('model-mind.features.feedback', true),
         'streamingEnabled' => (bool) config('model-mind.features.streaming', false),
+        'pageContext' => [
+            'enabled' => (bool) config('model-mind.features.page_context', true) && (bool) config('model-mind.page_context.enabled', true),
+            'maxContentCharacters' => (int) config('model-mind.page_context.max_content_characters', 6000),
+            'maxSelectionCharacters' => (int) config('model-mind.page_context.max_selection_characters', 2000),
+            'selectors' => config('model-mind.page_context.selectors', []),
+            'excludeSelectors' => config('model-mind.page_context.exclude_selectors', []),
+        ],
         'theme' => config('model-mind.ui.theme', 'auto'),
     ];
 @endphp
@@ -255,6 +262,7 @@ Use `MODEL_MIND_SCRIPTS_ASSET` for a public file. Your script should still post 
 - `GET` to `sessionEndpoint` for history restore.
 - `POST` to `actionClickEndpoint` when a rendered action or citation button is clicked.
 - `POST` to `${feedbackEndpoint}/${messageId}/feedback` for feedback.
+- Include `page_context` in chat and stream requests when `pageContext.enabled` is true.
 
 Assistant responses can include actions returned by the server. For named-route actions, the server resolves the configured Laravel route and returns the final URL in the same `actions` payload as normal links:
 

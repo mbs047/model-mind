@@ -539,11 +539,107 @@
             }
         };
 
-        const requestPayload = (text, userMessage) => ({
-            session_id: state.sessionId,
-            question: text,
-            history: recentHistory(userMessage.localId),
-        });
+        const cleanPageText = (value, maxCharacters = 6000) => String(value || '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, Math.max(1, maxCharacters));
+
+        const selectorList = (value) => (Array.isArray(value)
+            ? value.filter((selector) => typeof selector === 'string' && selector.trim().length > 0)
+            : []);
+
+        const querySelectors = (selectors) => {
+            const nodes = [];
+
+            selectors.forEach((selector) => {
+                try {
+                    document.querySelectorAll(selector).forEach((node) => nodes.push(node));
+                } catch (error) {
+                    // Invalid host-application selectors should not break chat.
+                }
+            });
+
+            return [...new Set(nodes)];
+        };
+
+        const textFromElement = (element, maxCharacters) => {
+            if (!element) {
+                return '';
+            }
+
+            const clone = element.cloneNode(true);
+            const excluded = selectorList(config.pageContext?.excludeSelectors);
+
+            excluded.forEach((selector) => {
+                try {
+                    clone.querySelectorAll(selector).forEach((node) => node.remove());
+                } catch (error) {
+                    // Ignore invalid exclude selectors.
+                }
+            });
+
+            return cleanPageText(clone.textContent || '', maxCharacters);
+        };
+
+        const currentPageContext = () => {
+            const settings = config.pageContext || {};
+
+            if (!settings.enabled) {
+                return null;
+            }
+
+            const maxContentCharacters = Math.max(500, Number(settings.maxContentCharacters) || 6000);
+            const maxSelectionCharacters = Math.max(200, Number(settings.maxSelectionCharacters) || 2000);
+            const selectors = selectorList(settings.selectors);
+            const roots = querySelectors(selectors).filter((node) => !widget.contains(node));
+            const sourceElements = roots.length > 0 ? roots : [document.body];
+            const headings = Array.from(document.querySelectorAll('h1, h2, h3'))
+                .filter((heading) => !widget.contains(heading))
+                .map((heading) => cleanPageText(heading.textContent, 160))
+                .filter(Boolean)
+                .slice(0, 12);
+            const selectedText = cleanPageText(window.getSelection?.().toString() || '', maxSelectionCharacters);
+            const content = cleanPageText(
+                sourceElements.map((element) => textFromElement(element, maxContentCharacters)).filter(Boolean).join('\n'),
+                maxContentCharacters,
+            );
+            const context = {
+                url: cleanPageText(window.location.href, 2048),
+                title: cleanPageText(document.title, 180),
+                description: cleanPageText(document.querySelector('meta[name="description"]')?.getAttribute('content') || '', 500),
+                selection: selectedText,
+                headings,
+                content,
+                locale: cleanPageText(document.documentElement.lang || navigator.language || '', 30),
+            };
+
+            Object.keys(context).forEach((key) => {
+                if (Array.isArray(context[key]) && context[key].length === 0) {
+                    delete context[key];
+                }
+
+                if (!Array.isArray(context[key]) && !context[key]) {
+                    delete context[key];
+                }
+            });
+
+            return Object.keys(context).length > 0 ? context : null;
+        };
+
+        const requestPayload = (text, userMessage) => {
+            const payload = {
+                session_id: state.sessionId,
+                question: text,
+                history: recentHistory(userMessage.localId),
+            };
+            const pageContext = currentPageContext();
+
+            if (pageContext) {
+                payload.page_context = pageContext;
+            }
+
+            return payload;
+        };
 
         const applyFinalPayload = (payload, userMessage, pendingMessage) => {
             state.sessionId = payload.session_id || state.sessionId;
