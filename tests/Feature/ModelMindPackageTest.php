@@ -8,10 +8,16 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Schema;
 use Mbs\ModelMind\Contracts\ModelMindProvider;
+use Mbs\ModelMind\Events\ActionResolved;
+use Mbs\ModelMind\Events\AnswerGenerated;
+use Mbs\ModelMind\Events\FeedbackSubmitted;
+use Mbs\ModelMind\Events\MemoryLearned;
+use Mbs\ModelMind\Events\MessageSent;
 use Mbs\ModelMind\Models\ModelMindEvent;
 use Mbs\ModelMind\Models\ModelMindMemory;
 use Mbs\ModelMind\Models\ModelMindMessage;
@@ -833,6 +839,76 @@ class ModelMindPackageTest extends TestCase
         $this->assertSame(1, $payload['totals']['action_clicks']);
         $this->assertSame(15, $payload['totals']['total_tokens']);
         $this->assertSame('openai', $payload['providers'][0]['provider']);
+    }
+
+    public function test_extension_events_are_dispatched_for_chat_feedback_actions_and_learning(): void
+    {
+        Event::fake([
+            ActionResolved::class,
+            AnswerGenerated::class,
+            FeedbackSubmitted::class,
+            MemoryLearned::class,
+            MessageSent::class,
+        ]);
+
+        $entry = KnowledgeEntry::query()->create([
+            'title' => 'Extension Hooks',
+            'body' => 'Packages can listen to ModelMind events and mirror activity into their own systems.',
+            'is_public' => true,
+        ]);
+
+        Http::fake([
+            'api.openai.com/v1/responses' => fn () => Http::response([
+                'output_text' => "Open the public extension policy and review the supported listener hooks.\n[[model_mind_route key=\"knowledge.view\" entry=\"{$entry->id}\"]]",
+                'usage' => [
+                    'input_tokens' => 12,
+                    'output_tokens' => 9,
+                    'total_tokens' => 21,
+                ],
+            ]),
+        ]);
+
+        $response = $this->postJson(route('model-mind.chat'), [
+            'question' => 'Which extension hooks are available?',
+        ])->assertOk();
+
+        Event::assertDispatched(MessageSent::class, fn (MessageSent $event): bool => $event->message->role === ModelMindMessage::ROLE_USER
+            && $event->message->content === 'Which extension hooks are available?'
+            && $event->question === 'Which extension hooks are available?'
+            && $event->context['transport'] === 'json');
+
+        Event::assertDispatched(ActionResolved::class, fn (ActionResolved $event): bool => $event->key === 'knowledge.view'
+            && $event->parameters['entry'] === (string) $entry->id
+            && $event->action['url'] === url("/knowledge/{$entry->id}"));
+
+        Event::assertDispatched(AnswerGenerated::class, fn (AnswerGenerated $event): bool => $event->message->uuid === $response->json('message_id')
+            && $event->answer === 'Open the public extension policy and review the supported listener hooks.'
+            && $event->actions[0]['url'] === url("/knowledge/{$entry->id}")
+            && $event->providerMetadata['provider'] === 'openai'
+            && $event->providerMetadata['total_tokens'] === 21
+            && $event->latencyMs >= 0);
+
+        Event::assertDispatched(MemoryLearned::class, fn (MemoryLearned $event): bool => $event->memory->source === 'assistant_answer'
+            && $event->created === true
+            && $event->metadata['question'] === 'Which extension hooks are available?');
+
+        $assistantMessage = ModelMindMessage::query()
+            ->where('uuid', $response->json('message_id'))
+            ->firstOrFail();
+
+        $this->postJson(route('model-mind.messages.feedback', $assistantMessage), [
+            'session_id' => $response->json('session_id'),
+            'feedback' => ModelMindMessage::FEEDBACK_LIKED,
+            'note' => 'Useful hook surface.',
+        ])->assertOk();
+
+        Event::assertDispatched(FeedbackSubmitted::class, fn (FeedbackSubmitted $event): bool => $event->message->is($assistantMessage)
+            && $event->feedback === ModelMindMessage::FEEDBACK_LIKED
+            && $event->note === 'Useful hook surface.');
+
+        Event::assertDispatched(MemoryLearned::class, fn (MemoryLearned $event): bool => $event->memory->source === 'liked_answer'
+            && $event->created === true
+            && $event->metadata['message_id'] === $assistantMessage->uuid);
     }
 
     public function test_chat_endpoint_returns_source_citations_for_used_model_records(): void

@@ -6,6 +6,11 @@ The format follows the spirit of Keep a Changelog, and this project uses semanti
 
 ## Unreleased
 
+### Added
+
+- Laravel extension events for sent messages, generated answers, submitted feedback, resolved actions, and learned memory.
+- Events and hooks documentation with listener examples for dashboards, audits, queues, and integrations.
+
 ## v1.0.14 - 2026-05-21
 
 ### Added

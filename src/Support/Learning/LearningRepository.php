@@ -3,6 +3,7 @@
 namespace Mbs\ModelMind\Support\Learning;
 
 use Illuminate\Support\Facades\Cache;
+use Mbs\ModelMind\Events\MemoryLearned;
 use Mbs\ModelMind\Models\ModelMindMemory;
 use Mbs\ModelMind\Models\ModelMindMessage;
 
@@ -27,6 +28,7 @@ class LearningRepository
         $title = $title ? str($title)->squish()->limit(120, '')->toString() : null;
         $hash = hash('sha256', mb_strtolower($source.'|'.$content));
         $memory = ModelMindMemory::query()->where('content_hash', $hash)->first();
+        $created = false;
 
         if ($memory) {
             $memory->forceFill([
@@ -39,6 +41,7 @@ class LearningRepository
                 'learned_at' => now(),
             ])->save();
         } else {
+            $created = true;
             $memory = ModelMindMemory::query()->create([
                 'source' => $source,
                 'title' => $title,
@@ -51,6 +54,7 @@ class LearningRepository
         }
 
         Cache::forget('model-mind.context.v1');
+        event(new MemoryLearned($memory, $created, $memory->metadata ?? []));
 
         return $memory;
     }

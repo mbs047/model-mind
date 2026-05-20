@@ -10,6 +10,9 @@ use Mbs\ModelMind\Contracts\ModelMindProvider;
 use Mbs\ModelMind\Contracts\StreamingModelMindProvider;
 use Mbs\ModelMind\Data\ModelMindRequestData;
 use Mbs\ModelMind\Data\ModelMindResponseData;
+use Mbs\ModelMind\Events\AnswerGenerated;
+use Mbs\ModelMind\Events\FeedbackSubmitted;
+use Mbs\ModelMind\Events\MessageSent;
 use Mbs\ModelMind\Http\Requests\AskModelMindRequest;
 use Mbs\ModelMind\Http\Requests\FeedbackModelMindMessageRequest;
 use Mbs\ModelMind\Http\Requests\TrackModelMindActionClickRequest;
@@ -194,6 +197,10 @@ class ModelMindController extends Controller
             'role' => ModelMindMessage::ROLE_USER,
             'content' => $question,
         ]);
+        event(new MessageSent($session, $userMessage, $question, [
+            'route' => $request->route()?->getName(),
+            'transport' => $request->expectsJson() ? 'json' : 'web',
+        ]));
         $session->compactForPrompt();
 
         return [$session, $question, $userMessage];
@@ -223,6 +230,16 @@ class ModelMindController extends Controller
                 'citations' => $cited['citations'],
             ],
         ]);
+        event(new AnswerGenerated(
+            session: $session,
+            message: $assistantMessage,
+            question: $question,
+            answer: $prepared['answer'],
+            actions: $prepared['actions'],
+            citations: $cited['citations'],
+            providerMetadata: $response->metadata,
+            latencyMs: $latencyMs,
+        ));
         $analytics->recordChatCompleted($session, $assistantMessage, $response->metadata, $latencyMs, [
             'actions_count' => count($prepared['actions']),
             'citations_count' => count($cited['citations']),
@@ -395,6 +412,11 @@ class ModelMindController extends Controller
         }
 
         $analytics->recordFeedback($assistantMessage, $request);
+        event(new FeedbackSubmitted(
+            message: $assistantMessage,
+            feedback: (string) $assistantMessage->feedback,
+            note: $assistantMessage->feedback_note,
+        ));
 
         return response()->json([
             'feedback' => $assistantMessage->feedback,

@@ -30,7 +30,7 @@ Try ModelMind in [Market Lane Store](https://mbs-sample.on-forge.com/), a sample
 - Auto-discovered columns with sensitive field filtering.
 - Per-model control through the `HasModelMindContext` trait.
 - Persisted chat sessions, message history, user feedback, and learned knowledge.
-- Usage analytics for latency, token usage, provider/model usage, failures, feedback rate, and action clicks.
+- Usage analytics and Laravel events for latency, token usage, provider/model usage, failures, feedback rate, action clicks, generated answers, and learned memory.
 - Configurable table prefix for clean package ownership.
 - Safe named-route action buttons from configured Laravel routes.
 - Source citations that show the model, record, fields used, and optional record button.
@@ -134,7 +134,7 @@ Supported widget positions are `bottom-right`, `bottom-left`, `bottom-center`, `
 
 ## Full Documentation
 
-Read the documentation index in [docs/README.md](docs/README.md). Start with [docs/examples.md](docs/examples.md) for simple and advanced copyable setups. Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, headless API mode, streaming responses, provider drivers, model configuration, multilingual answers, retrieval, route actions, source citations, authorization, security, learning memory, feedback, analytics, table prefixes, routes, performance, and testing.
+Read the documentation index in [docs/README.md](docs/README.md). Start with [docs/examples.md](docs/examples.md) for simple and advanced copyable setups. Each major feature has its own focused guide: installation, Blade rendering, themes, public assets, headless API mode, streaming responses, provider drivers, model configuration, multilingual answers, retrieval, route actions, source citations, authorization, security, learning memory, feedback, analytics, events and hooks, table prefixes, routes, performance, and testing.
 
 For starter configuration by application type, run:
 

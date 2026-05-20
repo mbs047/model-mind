@@ -584,6 +584,7 @@ POST /api/model-mind/stream
 - [Provider Drivers](provider-drivers.md)
 - [Learning Memory](learning-memory.md)
 - [Usage Analytics](analytics.md)
+- [Events and Hooks](events-and-hooks.md)
 - [Sessions](sessions.md)
 - [Multilingual Answers](multilingual.md)
 - [Custom AI Providers](ai-providers.md)

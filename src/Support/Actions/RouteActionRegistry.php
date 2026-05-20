@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Schema;
 use Mbs\ModelMind\Concerns\HasModelMindContext;
+use Mbs\ModelMind\Events\ActionResolved;
 use Mbs\ModelMind\Support\Auth\ModelMindAuthorization;
 use Throwable;
 
@@ -124,11 +125,15 @@ PROMPT;
             return null;
         }
 
-        return [
+        $action = [
             'label' => $this->label($definition, $routeParameters, $label),
             'url' => $url,
             'kind' => $definition['kind'],
         ];
+
+        event(new ActionResolved($definition['key'], $action, $routeParameters, $definition));
+
+        return $action;
     }
 
     /**
