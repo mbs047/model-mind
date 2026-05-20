@@ -13,6 +13,7 @@ use Mbs\ModelMind\Console\Commands\InstallModelMindCommand;
 use Mbs\ModelMind\Console\Commands\LearnModelMindKnowledgeCommand;
 use Mbs\ModelMind\Contracts\ModelMindProvider;
 use Mbs\ModelMind\Support\Providers\OpenAiModelMindProvider;
+use Mbs\ModelMind\Support\Views\ModelMindViewRenderer;
 
 class ModelMindServiceProvider extends ServiceProvider
 {
@@ -21,6 +22,7 @@ class ModelMindServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/model-mind.php', 'model-mind');
 
         $this->app->bind(ModelMindProvider::class, OpenAiModelMindProvider::class);
+        $this->app->singleton('model-mind.views', ModelMindViewRenderer::class);
     }
 
     public function boot(): void
@@ -46,10 +48,21 @@ class ModelMindServiceProvider extends ServiceProvider
     {
         Blade::componentNamespace('Mbs\\ModelMind\\View\\Components', 'model-mind');
 
-        Blade::directive('modelMindModal', fn (): string => "<?php echo view('model-mind::components.modal')->render(); ?>");
-        Blade::directive('modelMindScripts', fn (): string => "<?php echo view('model-mind::components.scripts')->render(); ?>");
-        Blade::directive('modelMindStyles', fn (): string => "<?php echo view('model-mind::components.styles')->render(); ?>");
-        Blade::directive('modelMind', fn (): string => "<?php echo view('model-mind::components.styles')->render(); echo view('model-mind::components.modal')->render(); echo view('model-mind::components.scripts')->render(); ?>");
+        Blade::directive('modelMindModal', fn (string $expression): string => $this->bladeViewCall('modal', $expression));
+        Blade::directive('modelMindScripts', fn (string $expression): string => $this->bladeViewCall('scripts', $expression));
+        Blade::directive('modelMindStyles', fn (string $expression): string => $this->bladeViewCall('styles', $expression));
+        Blade::directive('modelMind', fn (string $expression): string => $this->bladeViewCall('all', $expression));
+    }
+
+    private function bladeViewCall(string $method, string $expression): string
+    {
+        $arguments = trim($expression);
+
+        if ($arguments === '') {
+            return "<?php echo app('model-mind.views')->{$method}(); ?>";
+        }
+
+        return "<?php echo app('model-mind.views')->{$method}({$arguments}); ?>";
     }
 
     private function registerPublishing(): void

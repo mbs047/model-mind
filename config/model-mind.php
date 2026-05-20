@@ -117,10 +117,17 @@ return [
     'ui' => [
         'enabled' => true,
         'storage_key' => 'model-mind-state',
+        'theme' => env('MODEL_MIND_THEME', 'auto'),
         'position' => env('MODEL_MIND_POSITION', 'bottom-right'),
         'width' => env('MODEL_MIND_WIDTH', '25rem'),
         'offset' => env('MODEL_MIND_OFFSET', '1.25rem'),
         'z_index' => (int) env('MODEL_MIND_Z_INDEX', 9999),
+    ],
+
+    'views' => [
+        'modal' => env('MODEL_MIND_MODAL_VIEW', 'model-mind::components.modal'),
+        'styles' => env('MODEL_MIND_STYLES_VIEW', 'model-mind::components.styles'),
+        'scripts' => env('MODEL_MIND_SCRIPTS_VIEW', 'model-mind::components.scripts'),
     ],
 
     'features' => [

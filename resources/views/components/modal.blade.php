@@ -51,15 +51,19 @@
         'top-right',
     ];
     $position = in_array($position, $supportedPositions, true) ? $position : 'bottom-right';
+    $theme = strtolower((string) ($ui['theme'] ?? 'auto'));
+    $theme = in_array($theme, ['auto', 'light', 'dark'], true) ? $theme : 'auto';
+    $modelMindConfig['theme'] = $theme;
     $width = $normalizeCssLength($ui['width'] ?? null, '25rem');
     $offset = $normalizeCssLength($ui['offset'] ?? null, '1.25rem');
     $zIndex = max(1, min((int) ($ui['z_index'] ?? 9999), 2147483647));
 @endphp
 
 <div
-    class="model-mind-widget"
+    class="model-mind-widget {{ $theme === 'dark' ? 'dark' : '' }}"
     style="--model-mind-width: {{ $width }}; --model-mind-offset: {{ $offset }}; --model-mind-z-index: {{ $zIndex }};"
     data-model-mind-position="{{ $position }}"
+    data-model-mind-theme="{{ $theme }}"
     data-model-mind-widget
 >
     <script type="application/json" data-model-mind-config>{!! json_encode($modelMindConfig, JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_HEX_TAG | JSON_UNESCAPED_SLASHES) !!}</script>

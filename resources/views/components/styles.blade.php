@@ -1,10 +1,23 @@
 <style>
     .model-mind-widget {
+        color-scheme: light;
         display: flex;
         flex-direction: column;
         position: fixed;
         width: min(calc(100vw - (var(--model-mind-offset, 1.25rem) * 2)), var(--model-mind-width, 25rem));
         z-index: var(--model-mind-z-index, 9999);
+    }
+
+    .dark .model-mind-widget[data-model-mind-theme="auto"],
+    .model-mind-widget.dark,
+    .model-mind-widget[data-model-mind-theme="dark"] {
+        color-scheme: dark;
+    }
+
+    @media (prefers-color-scheme: dark) {
+        .model-mind-widget[data-model-mind-theme="auto"] {
+            color-scheme: dark;
+        }
     }
 
     .model-mind-widget > :not(script) {

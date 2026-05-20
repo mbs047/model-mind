@@ -1,0 +1,45 @@
+name: Performance issue
+description: Report slow responses, large context, or timeout behavior.
+title: "[Performance]: "
+labels:
+  - performance
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is slow or timing out?
+    validations:
+      required: true
+  - type: input
+    id: model_count
+    attributes:
+      label: Number of enabled models
+      placeholder: "3"
+  - type: input
+    id: context_size
+    attributes:
+      label: Approximate context size
+      description: You can get this from `php artisan model-mind:inspect-context`.
+      placeholder: "12000 characters"
+  - type: textarea
+    id: settings
+    attributes:
+      label: Relevant settings
+      description: Remove secrets before posting.
+      render: dotenv
+      placeholder: |
+        MODEL_MIND_CONTEXT_CACHE_SECONDS=600
+        MODEL_MIND_MAX_OUTPUT_TOKENS=450
+        MODEL_MIND_TIMEOUT=12
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      render: shell

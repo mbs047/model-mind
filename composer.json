@@ -24,12 +24,21 @@
             "Mbs\\ModelMind\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Mbs\\ModelMind\\Tests\\": "tests/"
+        }
+    },
     "extra": {
         "laravel": {
             "providers": [
                 "Mbs\\ModelMind\\ModelMindServiceProvider"
             ]
         }
+    },
+    "scripts": {
+        "format": "pint",
+        "test": "phpunit"
     },
     "require": {
         "php": "^8.3",
@@ -38,5 +47,10 @@
         "illuminate/http": "^11.0|^12.0|^13.0",
         "illuminate/support": "^11.0|^12.0|^13.0",
         "illuminate/view": "^11.0|^12.0|^13.0"
+    },
+    "require-dev": {
+        "laravel/pint": "^1.20",
+        "orchestra/testbench": "^9.0|^10.0|^11.0",
+        "phpunit/phpunit": "^10.5|^11.5|^12.0|^13.0"
     }
 }

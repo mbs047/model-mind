@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/mbs047/model-mind/security/advisories/new
+    about: Report vulnerabilities privately. Do not open a public issue for security reports.
+  - name: Support guide
+    url: https://github.com/mbs047/model-mind/blob/main/SUPPORT.md
+    about: Read how to ask questions and what information to include.

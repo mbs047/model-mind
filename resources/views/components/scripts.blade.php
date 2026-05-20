@@ -46,6 +46,10 @@
             widget.dataset.modelMindReady = 'true';
 
             const config = readConfig(widget);
+            const theme = ['auto', 'light', 'dark'].includes(config.theme) ? config.theme : 'auto';
+            widget.dataset.modelMindTheme = theme;
+            widget.classList.toggle('dark', theme === 'dark');
+
             const panel = widget.querySelector('[data-model-mind-panel]');
             const messagesContainer = widget.querySelector('[data-model-mind-messages]');
             const quickQuestionsContainer = widget.querySelector('[data-model-mind-quick-questions]');
@@ -261,28 +265,37 @@
                     return null;
                 }
 
-                const wrapper = createElement('div', { className: 'mt-2 flex gap-1' });
+                const wrapper = createElement('div', { className: 'mt-2 flex flex-wrap gap-2' });
                 const buttons = [
-                    ['liked', '\u2713', 'Mark helpful'],
-                    ['disliked', '!', 'Mark not helpful'],
+                    ['liked', 'Helpful', 'Mark helpful'],
+                    ['disliked', 'Not helpful', 'Mark not helpful'],
                 ];
 
                 buttons.forEach(([value, label, ariaLabel]) => {
-                    const activeClass = value === 'liked'
-                        ? ' border-emerald-400 text-emerald-700 dark:text-emerald-300'
-                        : ' border-rose-400 text-rose-700 dark:text-rose-300';
+                    const isSelected = message.feedback === value;
+                    const isDisabledBySelection = Boolean(message.feedback && !isSelected);
+                    const selectedClass = value === 'liked'
+                        ? ' border-emerald-500 bg-emerald-50 text-emerald-700 shadow-sm ring-2 ring-emerald-500/10 dark:border-emerald-400 dark:bg-emerald-500/10 dark:text-emerald-200'
+                        : ' border-rose-500 bg-rose-50 text-rose-700 shadow-sm ring-2 ring-rose-500/10 dark:border-rose-400 dark:bg-rose-500/10 dark:text-rose-200';
+                    const unavailableClass = ' border-slate-200 bg-slate-100 text-slate-400 dark:border-white/10 dark:bg-white/5 dark:text-slate-500';
+                    const idleClass = ' border-slate-200 bg-white text-slate-600 hover:border-slate-400 hover:text-slate-950 dark:border-white/10 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-white/25 dark:hover:text-white';
                     const button = createElement('button', {
-                        className: `inline-flex size-7 items-center justify-center rounded-full border border-slate-200 bg-white text-xs font-black text-slate-500 transition hover:border-slate-400 hover:text-slate-950 disabled:opacity-50 dark:border-white/10 dark:bg-slate-950 dark:text-slate-400 dark:hover:text-white${message.feedback === value ? activeClass : ''}`,
+                        className: `inline-flex min-h-8 items-center justify-center rounded-full border px-3 py-1.5 text-xs font-bold transition disabled:cursor-not-allowed${isSelected ? selectedClass : (isDisabledBySelection ? unavailableClass : idleClass)}`,
                         text: label,
                         attributes: {
                             type: 'button',
                             'aria-label': ariaLabel,
+                            'aria-pressed': isSelected ? 'true' : 'false',
                             title: ariaLabel,
                         },
                     });
 
-                    button.disabled = Boolean(message.feedbackSending);
-                    button.addEventListener('click', () => sendFeedback(message, value));
+                    button.disabled = Boolean(message.feedbackSending || isDisabledBySelection);
+
+                    if (!message.feedback) {
+                        button.addEventListener('click', () => sendFeedback(message, value));
+                    }
+
                     wrapper.append(button);
                 });
 

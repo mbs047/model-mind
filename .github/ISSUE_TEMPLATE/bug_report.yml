@@ -1,0 +1,87 @@
+name: Bug report
+description: Report something that is broken or behaving incorrectly.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please remove secrets, API keys, and private data before submitting.
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is broken?
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Provide the smallest reproducible steps you can.
+      placeholder: |
+        1. Install package...
+        2. Configure...
+        3. Ask...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    id: model_mind_version
+    attributes:
+      label: ModelMind version
+      placeholder: v1.0.3
+    validations:
+      required: true
+  - type: input
+    id: laravel_version
+    attributes:
+      label: Laravel version
+      placeholder: "13.x"
+    validations:
+      required: true
+  - type: input
+    id: php_version
+    attributes:
+      label: PHP version
+      placeholder: "8.4"
+    validations:
+      required: true
+  - type: dropdown
+    id: customized_views
+    attributes:
+      label: Are the ModelMind views customized?
+      options:
+        - "No"
+        - "Yes, published package views"
+        - "Yes, fully custom views"
+    validations:
+      required: true
+  - type: dropdown
+    id: theme
+    attributes:
+      label: Theme affected
+      options:
+        - Both
+        - Light only
+        - Dark only
+        - Not UI-related
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or stack trace
+      render: shell

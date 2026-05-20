@@ -1,0 +1,16 @@
+title: "[Q&A]: "
+labels:
+  - question
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What are you trying to do?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Include Laravel version, ModelMind version, and relevant config with secrets removed.
